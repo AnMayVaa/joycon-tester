@@ -325,6 +325,14 @@ Goal: the page runs on the **laptop**, the phone streams its sensors to it in re
 - **Requirements:** the phone must load the page over **HTTPS** (sensors), both devices need internet for signaling; very strict networks (symmetric NAT) may need a TURN server, which is not configured.
 - Verified end-to-end with two Playwright contexts (desktop + Pixel 7) over the real PeerJS server: motion, orientation, compass, touch, GPS, mic, camera stream, remote vibrate/tone and rotation all reached the laptop.
 
+### Phone 3D model & haptic scenes
+
+- **3D model:** device frame (x right, y top, z out) → CSS (y down) gives `rotateX(35deg) rotateZ(-α) rotateX(-β) rotateY(γ)` (the leading rotateX is only the camera tilt).
+- **Vibration support:** `CAN_VIB` (`navigator.vibrate`, Android Chrome/Samsung Internet). iPhone has no Vibration API; `IS_IOS` falls back to `iosTick()` — clicking a hidden `<input type="checkbox" switch>` label, which gives a system haptic tap on iOS 18+ Safari (taps only, no duration/strength). Firefox removed the API.
+- **Haptic scenes on the phone** (`phSceneStart` / `phSceneStop`, state `PHH`): reuse the Joy-Con `SCENES[]` unchanged. Context comes from `phSceneCtx()`: gravity "up" from deviceorientation β/γ (`(-cosβ·sinγ, sinβ, cosβ·cosγ)`) plus linear acceleration, mapped from the phone frame to the Joy-Con scene frame (`joy.x = phone.y`, `joy.y = −phone.x`, `joy.z = phone.z`; gyro the same). Buttons/stick come from the touch pad (`phPadState`: any touch = `zr`/`a`, first finger position = stick).
+- **Output:** tick every 40 ms. Continuous level L = la + 0.6·ha (+ long decays) × gain → PWM by `navigator.vibrate(ms)` (L·40 ms, dithered below 8 ms; ≥0.9 overlaps for a solid buzz). Impact onsets add a kick pulse of 12–57 ms. iOS: kicks = tap, continuous = tap rate up to 25/s.
+- **Remote:** on the laptop host the scene buttons send `scene {id, gain}` / `scenestop` / `hgain`; the scene runs on the phone (lowest latency) and the phone replies `hout {id, L, ball:[x,y]}` every tick for the laptop's meter, graph and marble view.
+
 ## 15. References
 - dekuNukem, *Nintendo_Switch_Reverse_Engineering* (HID reports, subcommands, SPI map, rumble, IMU).
 - CTCaer, *jc_toolkit* (`jctool.cpp`: IR camera, MCU CRC, Home LED patterns).
