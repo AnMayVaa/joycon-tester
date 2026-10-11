@@ -25,4 +25,4 @@ Open the page on your laptop, switch to **Phone sensors**, and scan the QR code 
 - Joy-Con: Chrome/Edge on desktop (WebHID)
 - Phone: any modern mobile browser; internet for the initial connection
 
-See [`JOYCON_TESTER.md`](JOYCON_TESTER.md) for the technical/protocol reference.
+Technical references: [`JOYCON_TESTER.md`](JOYCON_TESTER.md) (Joy-Con) and [`PHONE_TESTER.md`](PHONE_TESTER.md) (phone).

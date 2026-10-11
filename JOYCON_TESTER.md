@@ -289,59 +289,9 @@ Use `executablePath: '/opt/pw-browsers/chromium'` if Playwright's bundled browse
 7. UI hooks rely on `data-*` attributes; when adding a control, add the attribute in `buildUI()` and handle it in `wireUI()`.
 8. IR resolution trade-off: 40×30 / 80×60 are fast; 320×240 = 256 fragments per frame, only a few FPS.
 
-## 14. Phone sensors tab (`#view-phone`)
+## 14. Phone sensors tab
 
-A second view, switched by the header tabs (`setView("joy"|"phone")`, also via URL hash `#joy` / `#phone`). It auto-opens on touch devices without WebHID. Code lives in a **second `<script>`** after the Joy-Con script and reuses its globals (`$`, `clamp`, `fmt`). State is the `PH` object; elements use `data-p="…"` (outputs, looked up with `P(k)`), `data-pact` (actions), `data-pin` (inputs), `data-vib`, `data-tone`, `data-cam`. Render loop `phDraw()` runs only while the tab is visible; text updates throttled to 10 Hz.
-
-| Panel | Web API | Notes |
-|---|---|---|
-| Motion 3D, values, graph, shake | `devicemotion` (`accelerationIncludingGravity`, `acceleration`, `rotationRate`) | iOS needs `DeviceMotionEvent.requestPermission()` from a tap (`phStart`). rotationRate mapped to x=β, y=γ, z=α |
-| Bubble level | `deviceorientation` β/γ | Uses angles (not raw accel) to avoid iOS/Android sign differences. Level = both < 1° |
-| Compass | `webkitCompassHeading` (iOS) or `deviceorientationabsolute` α → heading = 360 − α | |
-| Sensor API table | Generic Sensor API classes | Chrome Android only. Magnetometer/AmbientLight need chrome://flags |
-| Multi-touch | Pointer events on a `touch-action:none` canvas | Tracks every pointer, trails, pressure, contact size |
-| Vibration | `navigator.vibrate(pattern)` | Not supported on iPhone Safari |
-| Speaker | Web Audio oscillator + `StereoPanner` | Left/right/both, 40 Hz→16 kHz sweep, live freq/volume/wave |
-| Microphone | `getUserMedia` audio → `AnalyserNode` | Processing (echo/noise/AGC) disabled; RMS dB, peak, log spectrum, dominant pitch |
-| Camera | `getUserMedia` video with `facingMode` | Flashlight via `applyConstraints({advanced:[{torch}]})` when `getCapabilities().torch` |
-| GPS | `geolocation.watchPosition` (high accuracy) | |
-| Screen & device | `screen`, `matchMedia`, `navigator.connection/deviceMemory/getBattery`, `wakeLock` | Refresh rate measured from rAF |
-
-Checklist (`phChecks`): motion data · gyro > 90 °/s · 3 shakes > 2 G · orientation · compass · 2+ fingers · vibration · speaker · mic > −40 dBFS · camera · GPS fix · screen rotation.
-
-**Requirement:** a secure context. On a phone that means the page must be served over **HTTPS** (a `file://` or plain `http://` LAN address will block motion/camera/mic/GPS). Verified with Playwright mobile emulation (Pixel 7 profile, fake media devices, synthetic `DeviceMotionEvent`/`DeviceOrientationEvent`, CDP multi-touch).
-
-
-### Live link: phone → laptop (`LINK`)
-
-Goal: the page runs on the **laptop**, the phone streams its sensors to it in real time. (A phone browser cannot act as a Bluetooth peripheral, so the link is WebRTC, not Bluetooth.)
-
-- **Mode selection** (`linkAutoStart`, runs when the Phone tab is shown): URL `#pair=<id>` → **phone/sender**; phone-like UA with touch → local mode; otherwise → **laptop/host**.
-- **Host** (`linkHost`): loads PeerJS (`unpkg.com/peerjs@1.5.4`, public signaling server `0.peerjs.com`, Google STUN), creates peer id `jct-…`, renders a QR (`qrcodejs 1.0.0` from cdnjs) of `<Phone page URL>#pair=<id>`. Phone page URL defaults to the current URL when served over https, otherwise it is typed in and saved in `localStorage` (`jct-phone-url`). Incoming data → `linkRx()` → the same `phApplyMotion` / `phApplyOri` / `PH.*` state the local sensors use, so every panel and the checklist work unchanged. Answers the phone's media call to show its camera in the Camera panel. Sends `ping` every 2 s (latency = RTT/2).
-- **Sender** (`linkJoin` → `linkSenderStart` on tap): requests motion permission (`phStart`), unlocks Web Audio, requests a screen wake lock, connects with `serialization:"json"`, then `linkSenderTick` every 20 ms.
-- **Messages phone → laptop:** `m` {acc, lin, rot, o:[α,β,γ], hd, hs} · `touch` {p:[[id,x,y,pressure,w,h]] normalized 0–1} · `gps` {ts, c} · `mic` {db, peak, pitch, sr, bars[96]} · `micoff` · `info` {name, rows, bat} every 4 s · `sensors` every 1.5 s · `ev` {k: vibrate|speaker|rotate} · `pong`.
-- **Messages laptop → phone:** `vib` {k, ms} (runs `phVibrate` on the phone) · `tone` {mode, freq, vol, wave} (runs `phTone` on the phone) · `ping`.
-- When the host is connected, the laptop's Vibration and Speaker buttons act on the phone (`phVibrate` / `phTone` check `LINK.role`).
-- **Requirements:** the phone must load the page over **HTTPS** (sensors), both devices need internet for signaling; very strict networks (symmetric NAT) may need a TURN server, which is not configured.
-- Verified end-to-end with two Playwright contexts (desktop + Pixel 7) over the real PeerJS server: motion, orientation, compass, touch, GPS, mic, camera stream, remote vibrate/tone and rotation all reached the laptop.
-
-### Phone 3D model & haptic scenes
-
-- **3D model:** device frame (x right, y top, z out) → CSS (y down) gives `rotateX(35deg) rotateZ(-α) rotateX(-β) rotateY(γ)` (the leading rotateX is only the camera tilt).
-- **Vibration support:** `CAN_VIB` (`navigator.vibrate`, Android Chrome/Samsung Internet). iPhone has no Vibration API; `IS_IOS` falls back to `iosTick()` — clicking a hidden `<input type="checkbox" switch>` label, which gives a system haptic tap on iOS 18+ Safari (taps only, no duration/strength). Firefox removed the API.
-- **Haptic scenes on the phone** (`phSceneStart` / `phSceneStop`, state `PHH`): reuse the Joy-Con `SCENES[]` unchanged. Context comes from `phSceneCtx()`: gravity "up" from deviceorientation β/γ (`(-cosβ·sinγ, sinβ, cosβ·cosγ)`) plus linear acceleration, mapped from the phone frame to the Joy-Con scene frame (`joy.x = phone.y`, `joy.y = −phone.x`, `joy.z = phone.z`; gyro the same). Buttons/stick come from the touch pad (`phPadState`: any touch = `zr`/`a`, first finger position = stick).
-- **Output:** tick every 40 ms. Continuous level L = la + 0.6·ha (+ long decays) × gain → PWM by `navigator.vibrate(ms)` (L·40 ms, dithered below 8 ms; ≥0.9 overlaps for a solid buzz). Impact onsets add a kick pulse of 12–57 ms. iOS: kicks = tap, continuous = tap rate up to 25/s.
-- **Remote:** on the laptop host the scene buttons send `scene {id, gain}` / `scenestop` / `hgain`; the scene runs on the phone (lowest latency) and the phone replies `hout {id, L, ball:[x,y]}` every tick for the laptop's meter, graph and marble view.
-
-### iPhone specifics (tested by the user: iPhone + desktop control)
-
-- **Speaker:** iOS mutes Web Audio with the ring/silent switch and keeps it locked until a sound starts inside a tap. `phUnlockAudio()` (run on the "Connect & start sensors" tap and on any later `touchend` if the context isn't running) sets `navigator.audioSession.type = "playback"` (Safari 16.4+, bypasses silent mode) and plays a 1-sample buffer. Tone gain is linear (`vol/100 × 0.9`, default 70 %). The phone reports `ev speaker {state}` so the laptop can show whether audio is running.
-- **Vibration:** iPhone has no Vibration API. The only web haptic is the iOS 18 `<input switch>` tap (`iosTick`), and Safari only honours it inside a user gesture, so **remote/automatic vibration from the laptop is impossible on iPhone**. `phVibrate` checks `navigator.userActivation.isActive` and reports `why: "ios-remote"`; the phone link screen has a **Tap haptic test** button (gesture → tick) to verify the motor.
-- **Audio session:** `phAudioSession()` sets `navigator.audioSession.type` to `"playback"` (plays in silent mode) normally and `"play-and-record"` while the mic is on or starting — "playback" blocks `getUserMedia` audio on iOS. The phone reports `ev mic {ok, why}` to the laptop.
-- **Speaker tone** uses the same simple graph as the scene synth (osc → gain → destination); left/right uses a `ChannelMerger` (ch0/ch1) instead of `StereoPanner`; errors are reported as `ev speaker {state:"error: …"}`.
-- **Vibration presets on iPhone** play as a 170 Hz sawtooth buzz following the on/off pattern (`phBuzzSound`), reported as `why: "ios-sound"`.
-- **Haptic scenes on iPhone** are rendered as sound instead (`phSynthStart/Hit/Stop`): low band as a triangle oscillator one octave up (phone speakers can't play 40–160 Hz), high band as a sine, impacts as short enveloped bursts. The phone's `info` message carries `ios:true` so the laptop explains this.
-- **Rotation:** iPhones usually have rotation lock on, so the screen never rotates. `phRotDetect(β, γ)` detects physical portrait (|β| > 55°, |γ| < 30°) ↔ landscape (|γ| > 60°, |β| < 30°) turns from gravity; the checklist item is "Turn phone portrait ↔ landscape".
+The second tab (phone sensors, live phone → laptop link, phone haptic scenes, iPhone rules) is documented in **[`PHONE_TESTER.md`](PHONE_TESTER.md)**.
 
 ## 15. References
 - dekuNukem, *Nintendo_Switch_Reverse_Engineering* (HID reports, subcommands, SPI map, rumble, IMU).
