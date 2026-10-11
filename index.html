@@ -1,0 +1,2227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Joy-Con &amp; Phone Tester</title>
+<style>
+:root{
+  --bg:#0f1115;--panel:#171a21;--panel2:#1f232c;--line:#2a2f3a;--text:#e8eaf0;--muted:#8b93a3;
+  --btn:#3a404d;--btn-done:#596273;--good:#3ddc84;--warn:#ffb020;--bad:#ff5a5a;
+  --x:#ff6b6b;--y:#51cf66;--z:#4dabf7;--accent:#00c3e3;--body:#00c3e3;
+}
+@media (prefers-color-scheme: light){
+  :root{--bg:#f3f4f7;--panel:#ffffff;--panel2:#f0f2f6;--line:#dde1e8;--text:#14171c;--muted:#5f6878;--btn:#c9ced8;--btn-done:#9aa3b2;}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header.top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
+header.top h1{font-size:18px;margin:0;letter-spacing:.2px}
+header.top .sub{color:var(--muted);font-size:13px}
+.spacer{flex:1}
+button,.btn{font:inherit;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button.primary{background:#e60012;border-color:#e60012;color:#fff;font-weight:600}
+button.primary:hover{filter:brightness(1.1)}
+button.small{padding:4px 9px;font-size:12px}
+button.on{background:var(--accent);border-color:var(--accent);color:#000}
+main{padding:20px;display:flex;flex-direction:column;gap:20px;max-width:1500px;margin:0 auto}
+.notice{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.notice.warn{border-color:var(--warn)}
+.notice h2{margin:0 0 8px;font-size:15px}
+.notice ol{margin:6px 0 0;padding-left:20px}
+.notice li{margin:3px 0}
+.muted{color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:14px;overflow:hidden}
+.card-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.card-head h2{margin:0;font-size:16px}
+.swatch{width:16px;height:16px;border-radius:50%;background:var(--body);border:2px solid var(--line)}
+.pill{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--muted);white-space:nowrap}
+.pill b{color:var(--text);font-weight:600}
+.status{font-size:12px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;padding:16px}
+.panel{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:0}
+.panel.wide{grid-column:1/-1}
+.panel h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.panel h3 .r{margin-left:auto;text-transform:none;letter-spacing:0}
+.ctl{display:flex;justify-content:center;gap:10px;align-items:center}
+svg.jc{height:300px;width:auto;max-width:100%}
+svg.jc .body{fill:var(--body);stroke:rgba(0,0,0,.35);stroke-width:1.5}
+svg.jc .rail{fill:#2b2f36}
+svg.jc .well{fill:rgba(0,0,0,.35)}
+svg.jc .b{fill:#2a2d33;stroke:rgba(255,255,255,.18);stroke-width:1;transition:fill .05s}
+svg.jc .bs{fill:none;stroke:#2a2d33;stroke-width:9;stroke-linecap:round}
+svg.jc .b.on{fill:#fff;filter:drop-shadow(0 0 6px #fff)}
+svg.jc .bs.on{fill:none;stroke:#fff}
+svg.jc text{fill:#cfd3da;font:700 11px system-ui;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+svg.jc .b.on + text{fill:#000}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:4px 8px;font-size:12px;min-width:48px;text-align:center;transition:background .05s}
+.chip small{display:block;color:var(--muted);font-size:10px}
+.chip.done{border-color:var(--good)}
+.chip.on{background:var(--accent);color:#000;border-color:var(--accent)}
+.chip.on small{color:#000}
+.stickwrap{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+canvas.stick{width:180px;height:180px;border-radius:10px;background:var(--panel)}
+canvas.graph{width:100%;height:260px;border-radius:10px;background:var(--panel);display:block}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12px;font-variant-numeric:tabular-nums}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.scene{height:240px;perspective:700px;display:grid;place-items:center;overflow:hidden;border-radius:10px;background:radial-gradient(circle at 50% 60%,rgba(127,127,127,.18),transparent 70%)}
+.model{position:relative;width:76px;height:204px;transform-style:preserve-3d}
+.face{position:absolute;background:var(--body);border:1px solid rgba(0,0,0,.35);backface-visibility:visible}
+.face.front{inset:0;transform:translateZ(14px);background:transparent;border:0}
+.face.front svg{width:100%;height:100%;display:block}
+.face.back{inset:0;transform:rotateY(180deg) translateZ(14px);filter:brightness(.7);border-radius:30px}
+.face.l,.face.r{width:28px;height:204px;left:24px;top:0;filter:brightness(.8)}
+.face.l{transform:rotateY(-90deg) translateZ(38px)}
+.face.r{transform:rotateY(90deg) translateZ(38px)}
+.face.t,.face.bt{width:76px;height:28px;left:0;top:88px;filter:brightness(.9)}
+.face.t{transform:rotateX(90deg) translateZ(102px);background:#333}
+.face.bt{transform:rotateX(-90deg) translateZ(102px)}
+.vals{display:grid;grid-template-columns:auto repeat(3,1fr);gap:2px 8px;font:12px ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;margin-top:8px}
+.vals .h{color:var(--muted);font-family:system-ui}
+.cx{color:var(--x)}.cy{color:var(--y)}.cz{color:var(--z)}
+label.sl{display:grid;grid-template-columns:78px 1fr 54px;align-items:center;gap:8px;font-size:12px;margin:6px 0}
+label.sl span:last-child{text-align:right;font-family:ui-monospace,Menlo,monospace}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.leds{display:flex;gap:8px}
+.led{width:38px;height:22px;border-radius:5px;border:1px solid var(--line);background:var(--panel);cursor:pointer;padding:0}
+.led.on{background:#3ddc84;box-shadow:0 0 8px #3ddc84}
+.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:13px}
+.checks li{display:flex;gap:8px;align-items:center}
+.checks .ic{width:18px;height:18px;border-radius:50%;border:2px solid var(--btn);flex:none;display:grid;place-items:center;font-size:11px;color:#000}
+.checks li.pass .ic{background:var(--good);border-color:var(--good)}
+.checks li.pass .ic::after{content:"✓"}
+.checks .v{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums;font-size:12px}
+.bar{height:8px;background:var(--panel);border-radius:4px;overflow:hidden;margin:8px 0 4px}
+.bar > i{display:block;height:100%;width:0;background:var(--good);transition:width .2s}
+pre.raw{font:11px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all;margin:6px 0 0;color:var(--muted)}
+details summary{cursor:pointer;color:var(--muted);font-size:13px}
+.gp{display:flex;flex-direction:column;gap:12px;margin-top:10px}
+.gpcard{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--panel2)}
+.axbar{display:grid;grid-template-columns:40px 1fr 56px;gap:8px;align-items:center;font:12px ui-monospace,Menlo,monospace}
+.axbar .t{height:8px;background:var(--panel);border-radius:4px;position:relative}
+.axbar .t i{position:absolute;top:-2px;width:4px;height:12px;background:var(--accent);border-radius:2px;left:50%}
+.scenes{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+.scene-btn{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;padding:9px 11px;background:var(--panel)}
+.scene-btn .sn{font-weight:600}
+.scene-btn .tag{font-size:11px;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:0 7px}
+.scene-btn small{color:var(--muted);font-size:11.5px;line-height:1.35}
+.scene-btn.on{background:var(--panel);color:var(--text);border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.hrow{display:grid;grid-template-columns:minmax(0,2fr) minmax(220px,1fr);gap:14px;margin-top:12px;align-items:start}
+canvas.hviz{width:100%;height:120px;background:var(--panel);border-radius:10px;display:block}
+.hnow{font-size:12.5px;color:var(--muted);min-height:2.6em}
+.hnow b{color:var(--text)}
+.meter{display:grid;grid-template-columns:70px 1fr 60px;gap:8px;align-items:center;font-size:12px;margin:6px 0}
+.meter span:last-child{text-align:right;font-family:ui-monospace,Menlo,monospace}
+.mt{height:10px;background:var(--panel);border-radius:5px;overflow:hidden}
+.mt i{display:block;height:100%;width:0;background:var(--accent)}
+.mt i.lo{background:var(--muted)}
+@media (max-width:700px){.hrow{grid-template-columns:1fr}}
+svg.jc .homeglow{fill:none;stroke:#7fd0ff;stroke-width:3.5;opacity:0;filter:drop-shadow(0 0 4px #7fd0ff)}
+svg.jc .homeglow.hl-on{opacity:1}
+svg.jc .homeglow.hl-breathe{animation:hb 2.8s ease-in-out infinite}
+svg.jc .homeglow.hl-pulse{animation:hb 2.2s ease-in-out infinite}
+svg.jc .homeglow.hl-blink{animation:hblink .5s steps(1) infinite}
+svg.jc .homeglow.hl-heartbeat{animation:hheart 1.2s infinite}
+@keyframes hb{0%,100%{opacity:.1}50%{opacity:1}}
+@keyframes hblink{0%{opacity:1}50%{opacity:0}}
+@keyframes hheart{0%,30%,100%{opacity:0}10%,40%{opacity:1}}
+.irwrap{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(240px,1fr);gap:16px;align-items:start}
+.irview{display:flex;flex-direction:column;gap:8px;align-items:center}
+canvas.ircanvas{width:100%;max-width:520px;background:#000;border-radius:10px;display:block}
+.irhint{font-size:12px;color:var(--muted);text-align:center;max-width:520px}
+select{font:inherit;font-size:12px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:5px 8px}
+label.chk{display:flex;gap:8px;align-items:center;font-size:12.5px;margin:5px 0}
+.motlamp{margin-top:8px;text-align:center;font-size:12px;font-weight:600;padding:6px;border-radius:8px;border:1px solid var(--line);color:var(--muted)}
+.motlamp.on{background:var(--good);color:#000;border-color:var(--good)}
+@media (max-width:760px){.irwrap{grid-template-columns:1fr}}
+.tabs{display:flex;gap:4px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px}
+.tabs button{border:0;background:transparent;padding:6px 14px;border-radius:7px;font-weight:600;color:var(--muted)}
+.tabs button.on{background:var(--panel);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.25)}
+[hidden]{display:none !important}
+canvas.pcv{width:100%;max-width:240px;aspect-ratio:1;display:block;margin:0 auto;background:var(--panel);border-radius:50%}
+canvas.ptouch{width:100%;aspect-ratio:10/7;display:block;border-radius:10px;touch-action:none;user-select:none;-webkit-user-select:none}
+canvas.pspec{width:100%;height:110px;display:block;border-radius:10px}
+video.pvideo{width:100%;aspect-ratio:4/3;object-fit:cover;background:#000;border-radius:10px;display:block}
+.pmodel{position:relative;width:90px;height:180px;transform-style:preserve-3d}
+.pface{position:absolute;background:#3a3f4b;border:1px solid rgba(0,0,0,.4)}
+.pfront{inset:0;transform:translateZ(6px);background:#111;border:3px solid #555;border-radius:14px;display:flex;flex-direction:column;align-items:center}
+.pnotch{width:30px;height:6px;background:#333;border-radius:3px;margin-top:6px}
+.pscreen{flex:1;width:84%;margin:6px 0 10px;border-radius:6px;background:linear-gradient(160deg,#8b6cff,#00c3e3);color:#fff;font:700 11px system-ui;display:flex;justify-content:center;padding-top:6px}
+.pback{inset:0;transform:rotateY(180deg) translateZ(6px);border-radius:14px;background:#2b2f38}
+.pl,.pr{width:12px;height:180px;left:39px;top:0}
+.pl{transform:rotateY(-90deg) translateZ(45px)}.pr{transform:rotateY(90deg) translateZ(45px)}
+.pt,.pb{width:90px;height:12px;left:0;top:84px}
+.pt{transform:rotateX(90deg) translateZ(90px);background:#8b6cff}.pb{transform:rotateX(-90deg) translateZ(90px)}
+table.ptable{width:100%;border-collapse:collapse;font-size:12px}
+table.ptable th{text-align:left;color:var(--muted);font-weight:500;border-bottom:1px solid var(--line);padding:4px}
+table.ptable td{padding:4px;border-bottom:1px solid var(--line);font-family:ui-monospace,Menlo,monospace;word-break:break-word}
+table.ptable td.ok{color:var(--good)}
+.hostgrid{display:grid;grid-template-columns:232px 1fr;gap:22px;align-items:center}
+.hostgrid ol{margin:6px 0 4px}
+.hostcard.linked{border-color:var(--good)}
+.qrbox{width:224px;height:224px;background:#fff;padding:12px;border-radius:14px;display:grid;place-items:center}
+.qrbox img,.qrbox canvas{width:200px;height:200px}
+.qrmsg{color:#333;font-size:12px;text-align:center;line-height:1.4}
+.okc{color:var(--good) !important}
+.urlrow{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center;font-size:12px;margin-top:10px}
+.urlrow input{font:inherit;font-size:12px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:6px 8px;min-width:0}
+.urltext{word-break:break-all;flex:1;min-width:0}
+.bigbtn{width:100%;padding:14px;font-size:16px;margin:10px 0 4px}
+@media (max-width:640px){.hostgrid{grid-template-columns:1fr;justify-items:center}}
+.msg{font-size:12px;color:var(--muted);min-height:1.4em;margin-top:6px}
+@media (max-width:600px){header.top{position:static}main{padding:12px}.grid{padding:10px;grid-template-columns:1fr}header.top{padding:12px 16px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Joy-Con &amp; Phone Tester</h1>
+    <div class="sub">Controllers over Bluetooth (WebHID) · phone sensors via web APIs</div>
+  </div>
+  <nav class="tabs"><button data-view="joy" class="on">Joy-Con</button><button data-view="phone">Phone sensors</button></nav>
+  <div class="spacer"></div>
+  <button id="connect" class="primary">+ Connect Joy-Con</button>
+</header>
+
+<main id="main">
+  <div id="view-joy" style="display:flex;flex-direction:column;gap:20px">
+  <div id="unsupported" class="notice warn" hidden>
+    <h2>WebHID isn't available in this browser</h2>
+    Full testing (gyro, accelerometer, rumble, lights) needs <b>Chrome or Edge on desktop</b> (Windows, macOS, Linux, ChromeOS), opened as a local file or over HTTPS.
+    Basic button/stick testing via the Gamepad API is still available below.
+  </div>
+
+  <div id="howto" class="notice">
+    <h2>How to connect</h2>
+    <ol>
+      <li>Hold the small round <b>sync button</b> on the Joy-Con rail until the green lights run back and forth.</li>
+      <li>Pair it in your computer's Bluetooth settings — it appears as <b>Joy-Con (L)</b> or <b>Joy-Con (R)</b>.</li>
+      <li>Click <b>Connect Joy-Con</b> above and pick it. Repeat for the other one — both get their own panel.</li>
+    </ol>
+    <p class="muted" style="margin:8px 0 0">Tip: lay the Joy-Con flat on a table for the first second after connecting so the gyro can auto-calibrate. On Linux, the <code>hid-nintendo</code> driver may need udev rules for browser access.</p>
+  </div>
+
+  <div id="devices" style="display:flex;flex-direction:column;gap:20px"></div>
+
+  <details id="gpsec" class="notice">
+    <summary>Basic mode — Gamepad API (works in any browser, buttons & sticks only)</summary>
+    <div id="gplist" class="gp"><div class="muted">No gamepads seen yet. Press a button on the controller.</div></div>
+  </details>
+  </div>
+  <div id="view-phone" hidden>
+    <div id="ph-insecure" class="notice warn" hidden>
+      <h2>Phone sensors need HTTPS</h2>
+      Browsers only expose motion, compass, camera, microphone and GPS to pages served over <b>https://</b> (or <code>localhost</code>). Open this page from an HTTPS address on your phone.
+    </div>
+    <div id="ph-host" class="notice hostcard" hidden>
+      <div class="hostgrid">
+        <div id="ph-qr" class="qrbox"><div class="qrmsg">Starting…</div></div>
+        <div>
+          <h2>Connect your phone to this laptop</h2>
+          <ol>
+            <li>Scan the QR code with your phone's camera and open the link.</li>
+            <li>On the phone, tap <b>Connect &amp; start sensors</b> (allow motion access on iPhone).</li>
+            <li>Move, tilt and touch the phone — every panel below updates live on this laptop.</li>
+          </ol>
+          <div class="row"><span class="pill">Status <b data-p="lstat">–</b></span><span class="pill">Data <b data-p="lrate">–</b></span><span class="pill">Latency <b data-p="llat">–</b></span></div>
+          <label class="urlrow"><span>Phone page URL</span><input data-p="lurl" type="url" placeholder="https://…/joycon-tester.html"></label>
+          <div class="row" style="font-size:12px"><code data-p="lurltext" class="muted urltext"></code><button class="small" data-pact="copylink">Copy link</button><button class="small" data-pact="uselocal">Use this computer's own sensors</button></div>
+          <div class="muted" style="font-size:12px;margin-top:6px">Phone and laptop connect directly (WebRTC); both need internet for the handshake. The vibration and speaker buttons below play on the phone.</div>
+        </div>
+      </div>
+    </div>
+    <div id="ph-sender" class="notice" hidden>
+      <h2>Phone → laptop live link</h2>
+      <div class="row" style="margin-top:0"><span class="pill">Status <b data-p="sstat">–</b></span></div>
+      <button class="primary bigbtn" id="snd-start">Connect &amp; start sensors</button>
+      <div class="row"><button data-snd="gps">GPS</button><button data-snd="mic">Microphone</button><button data-snd="cam">Share camera</button><button data-snd="flip">Switch camera</button></div>
+      <canvas class="ptouch" data-p="spad" width="600" height="520" style="margin-top:10px"></canvas>
+      <div class="muted" style="font-size:12px;text-align:center;margin-top:4px">Touch here with several fingers — it shows on the laptop.</div>
+      <div class="row" style="font-size:12px"><span class="pill">|a| <b data-p="sacc">–</b></span><span class="pill">Heading <b data-p="shead">–</b></span><span class="pill">Sending <b data-p="stx">–</b></span></div>
+      <video class="pvideo" data-p="svideo" playsinline muted style="max-height:220px;margin-top:8px"></video>
+      <div class="msg" data-p="smsg">Keep this page open and the screen on while testing.</div>
+    </div>
+    <div class="notice" id="ph-local">
+      <h2>Phone sensor test</h2>
+      Open this page on your phone, then tap <b>Start motion sensors</b>. iPhone asks for "Motion &amp; Orientation" permission; camera, microphone and location ask when you press their buttons.
+      <div class="row"><button class="primary" id="ph-start">Start motion sensors</button><span class="muted" data-p="perm" style="font-size:12.5px"></span></div>
+    </div>
+    <article class="card" id="ph-card" style="--accent:#8b6cff;--body:#2a2f3a">
+      <div class="card-head">
+        <span class="swatch" style="background:#8b6cff"></span>
+        <h2>This device</h2>
+        <span class="status" data-p="ua">–</span>
+        <span class="spacer"></span>
+        <span class="pill">Motion <b data-p="mhz">–</b></span>
+        <span class="pill">Battery <b data-p="bat">–</b></span>
+        <span class="pill">Screen <b data-p="fps">–</b></span>
+      </div>
+      <div class="grid">
+        <section class="panel">
+          <h3>Motion (3D)</h3>
+          <div class="scene"><div class="pmodel" data-p="model">
+            <div class="pface pfront"><div class="pnotch"></div><div class="pscreen">TOP</div></div>
+            <div class="pface pback"></div><div class="pface pl"></div><div class="pface pr"></div><div class="pface pt"></div><div class="pface pb"></div>
+          </div></div>
+          <div class="vals">
+            <span></span><span class="h cx">X</span><span class="h cy">Y</span><span class="h cz">Z</span>
+            <span class="h">Accel m/s²</span><span data-p="ax">–</span><span data-p="ay">–</span><span data-p="az">–</span>
+            <span class="h">Linear m/s²</span><span data-p="lx">–</span><span data-p="ly">–</span><span data-p="lz">–</span>
+            <span class="h">Gyro °/s</span><span data-p="gx">–</span><span data-p="gy">–</span><span data-p="gz">–</span>
+          </div>
+          <div class="row" style="font-size:12px"><span class="pill">|a| <b data-p="amag">–</b></span><span class="pill">Peak <b data-p="peak">–</b></span><span class="pill">Shakes <b data-p="shakes">0</b></span><button class="small" data-pact="peak">Reset</button></div>
+        </section>
+        <section class="panel">
+          <h3>Bubble level</h3>
+          <canvas class="pcv" data-p="level" width="360" height="360"></canvas>
+          <dl class="kv" style="margin-top:8px"><dt>Tilt left/right (γ)</dt><dd data-p="gamma">–</dd><dt>Tilt front/back (β)</dt><dd data-p="beta">–</dd><dt>Status</dt><dd data-p="lvl">–</dd></dl>
+        </section>
+        <section class="panel">
+          <h3>Compass</h3>
+          <canvas class="pcv" data-p="compass" width="360" height="360"></canvas>
+          <dl class="kv" style="margin-top:8px"><dt>Heading</dt><dd data-p="heading">–</dd><dt>α (rotation)</dt><dd data-p="alpha">–</dd><dt>Source</dt><dd data-p="hsrc">–</dd></dl>
+          <div class="muted" style="font-size:12px;margin-top:6px">If it points wrong, wave the phone in a figure-8 to calibrate the magnetometer.</div>
+        </section>
+        <section class="panel wide">
+          <h3>Motion live graph <span class="r muted" style="font-size:12px;text-transform:none">top: gyro ±360 °/s · bottom: accel ±3 G · <span class="cx">X</span> <span class="cy">Y</span> <span class="cz">Z</span></span></h3>
+          <canvas class="graph" data-p="graph" width="1400" height="440"></canvas>
+        </section>
+        <section class="panel">
+          <h3>Multi-touch <span class="r"><button class="small" data-pact="touchclear">Clear</button></span></h3>
+          <canvas class="ptouch" data-p="touch" width="600" height="420"></canvas>
+          <dl class="kv" style="margin-top:8px"><dt>Fingers now</dt><dd data-p="tnow">0</dd><dt>Max at once</dt><dd data-p="tmax">0</dd><dt>Device max</dt><dd data-p="tdev">–</dd><dt>Pressure / size</dt><dd data-p="tpress">–</dd></dl>
+        </section>
+        <section class="panel">
+          <h3>Vibration motor</h3>
+          <div class="row" style="margin-top:0">
+            <button class="small" data-vib="tap">Tap</button><button class="small" data-vib="double">Double</button><button class="small" data-vib="long">Long</button>
+            <button class="small" data-vib="heart">Heartbeat</button><button class="small" data-vib="sos">SOS</button><button class="small" data-vib="ramp">Ramp</button>
+            <button class="small" data-vib="stop">Stop</button>
+          </div>
+          <label class="sl"><span>Custom</span><input type="range" data-pin="vibms" min="10" max="2000" step="10" value="300"><span data-p="vibms">300 ms</span></label>
+          <button class="small" data-vib="custom">Vibrate custom</button>
+          <div class="msg" data-p="vibmsg"></div>
+        </section>
+        <section class="panel">
+          <h3>Speaker</h3>
+          <label class="sl"><span>Frequency</span><input type="range" data-pin="freq" min="40" max="16000" value="440"><span data-p="freq">440 Hz</span></label>
+          <label class="sl"><span>Volume</span><input type="range" data-pin="vol" min="0" max="100" value="30"><span data-p="vol">30%</span></label>
+          <div class="row" style="font-size:12px">Wave
+            <select data-pin="wave"><option>sine</option><option>square</option><option>sawtooth</option><option>triangle</option></select></div>
+          <div class="row">
+            <button class="small" data-tone="0">Play both</button><button class="small" data-tone="-1">Left only</button><button class="small" data-tone="1">Right only</button>
+            <button class="small" data-tone="sweep">Sweep 40 Hz→16 kHz</button><button class="small" data-tone="stop">Stop</button>
+          </div>
+          <div class="muted" style="font-size:12px;margin-top:6px">Left/right tests stereo speakers or earphones. The sweep shows where your speaker stops producing sound.</div>
+        </section>
+        <section class="panel">
+          <h3>Microphone <span class="r"><button class="small" data-pact="mic">Start mic</button></span></h3>
+          <canvas class="pspec" data-p="spec" width="600" height="240"></canvas>
+          <div class="meter"><span>Level</span><div class="mt"><i data-p="miclvl"></i></div><span data-p="micdb">–</span></div>
+          <dl class="kv"><dt>Peak</dt><dd data-p="micpeak">–</dd><dt>Dominant pitch</dt><dd data-p="micpitch">–</dd><dt>Sample rate</dt><dd data-p="micsr">–</dd></dl>
+          <div class="msg" data-p="micmsg"></div>
+        </section>
+        <section class="panel">
+          <h3>Camera</h3>
+          <video class="pvideo" data-p="video" playsinline muted></video>
+          <div class="row">
+            <button class="small" data-cam="environment">Back camera</button><button class="small" data-cam="user">Front camera</button>
+            <button class="small" data-cam="torch" hidden>Flashlight</button><button class="small" data-cam="stop">Stop</button>
+          </div>
+          <div class="msg" data-p="cammsg"></div>
+        </section>
+        <section class="panel">
+          <h3>GPS / location <span class="r"><button class="small" data-pact="gps">Start GPS</button></span></h3>
+          <dl class="kv">
+            <dt>Latitude</dt><dd data-p="lat">–</dd><dt>Longitude</dt><dd data-p="lon">–</dd><dt>Accuracy</dt><dd data-p="acc">–</dd>
+            <dt>Altitude</dt><dd data-p="alt">–</dd><dt>Speed</dt><dd data-p="spd">–</dd><dt>Heading</dt><dd data-p="ghead">–</dd><dt>Fixes</dt><dd data-p="gpsn">0</dd><dt>Last fix</dt><dd data-p="gpst">–</dd>
+          </dl>
+          <div class="msg" data-p="gpsmsg">Go outdoors for the best accuracy (under 10 m).</div>
+        </section>
+        <section class="panel">
+          <h3>Sensor API (Chrome Android)</h3>
+          <table class="ptable"><thead><tr><th>Sensor</th><th>Status</th><th>Reading</th></tr></thead><tbody data-p="sensors"><tr><td colspan="3" class="muted">Tap “Start motion sensors”.</td></tr></tbody></table>
+          <div class="muted" style="font-size:12px;margin-top:6px">Magnetometer and light sensor are behind a flag in Chrome: chrome://flags → “Generic Sensor Extra Classes”.</div>
+        </section>
+        <section class="panel">
+          <h3>Screen &amp; device <span class="r"><button class="small" data-pact="wake">Keep screen on</button></span></h3>
+          <dl class="kv" data-p="info"></dl>
+        </section>
+        <section class="panel">
+          <h3>Test checklist <span class="r" data-p="score">0 / 0</span></h3>
+          <div class="bar"><i data-p="scorebar"></i></div>
+          <ul class="checks" data-p="checks"></ul>
+        </section>
+      </div>
+    </article>
+  </div>
+</main>
+
+<script>
+"use strict";
+const NINTENDO = 0x057e;
+const NAMES = {0x2006:"Joy-Con (L)", 0x2007:"Joy-Con (R)", 0x2009:"Pro Controller"};
+const ACCENT = {L:"#00c3e3", R:"#ff4554", P:"#b5bccb"};
+const NEUTRAL = [0x00,0x01,0x40,0x40, 0x00,0x01,0x40,0x40];
+// [id, label, byte index in report data (no report id), mask]
+const BTN = {
+  L:[["up","Up",4,0x02],["down","Down",4,0x01],["left","Left",4,0x08],["right","Right",4,0x04],
+     ["l","L",4,0x40],["zl","ZL",4,0x80],["sll","SL",4,0x20],["srl","SR",4,0x10],
+     ["minus","Minus",3,0x01],["capture","Capture",3,0x20],["lstick","Stick ⬇",3,0x08]],
+  R:[["a","A",2,0x08],["b","B",2,0x04],["x","X",2,0x02],["y","Y",2,0x01],
+     ["r","R",2,0x40],["zr","ZR",2,0x80],["slr","SL",2,0x20],["srr","SR",2,0x10],
+     ["plus","Plus",3,0x02],["home","Home",3,0x10],["rstick","Stick ⬇",3,0x04]]
+};
+const $ = (s, r=document) => r.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const hex2 = n => n.toString(16).padStart(2,"0").toUpperCase();
+const fmt = (v,d=2,w=7) => (v>=0?"+":"") + v.toFixed(d);
+
+/* ---------- HD rumble encoding ---------- */
+function encodeRumble(freq, amp){
+  if (amp <= 0) return [0x00,0x01,0x40,0x40];
+  freq = clamp(freq, 81, 626); amp = clamp(amp, 0, 1);
+  const ef = Math.round(Math.log2(freq/10) * 32);
+  const hf = (ef - 0x60) * 4, lf = ef - 0x40;
+  let ea;
+  if (amp > 0.23) ea = Math.round(Math.log2(amp*8.7) * 32);
+  else if (amp > 0.12) ea = Math.round(Math.log2(amp*17) * 16);
+  else ea = Math.round(amp/0.12 * Math.log2(0.12*17) * 16);
+  ea = clamp(ea, 0, 100);
+  const hfa = ea*2, lfa = Math.floor(ea/2) + 64;
+  return [hf & 0xff, (hfa + ((hf>>8)&0xff)) & 0xff, (lf + ((lfa>>8)&0xff)) & 0xff, lfa & 0xff];
+}
+
+// Dual-band encoding: high band 82–1252 Hz and low band 41–626 Hz, each with its own amplitude.
+function encAmp(amp){
+  amp = clamp(amp, 0, 1);
+  if (amp <= 0.002) return 0;
+  let ea;
+  if (amp > 0.23) ea = Math.round(Math.log2(amp*8.7) * 32);
+  else if (amp > 0.12) ea = Math.round(Math.log2(amp*17) * 16);
+  else ea = Math.round(amp/0.12 * Math.log2(0.12*17) * 16);
+  return clamp(ea, 0, 100);
+}
+function encodeDual(hf, ha, lf, la){
+  hf = clamp(hf, 82, 1252); lf = clamp(lf, 41, 626);
+  const h = (Math.round(Math.log2(hf/10) * 32) - 0x60) * 4;
+  const l = Math.round(Math.log2(lf/10) * 32) - 0x40;
+  const hfa = encAmp(ha) * 2, lfa = Math.floor(encAmp(la) / 2) + 64;
+  return [h & 0xff, (hfa + ((h>>8)&0x01)) & 0xff, l & 0x7f, lfa & 0xff];
+}
+
+/* ---------- haptic scenes ----------
+   tick(s, c) runs ~60×/s. Return a continuous base {hf,ha,lf,la}; fire one-shot impacts with
+   c.hit(band 'h'|'l', freqHz, amp 0–1, ms, flat?) and schedule with c.at(seconds, fn).
+   c has t, dt, acc[G], gyro[°/s], btn{}, stick[x,y], stickY. */
+const RND = (a,b) => a + Math.random()*(b-a);
+const nEvents = rate => Math.floor(rate + Math.random());
+const anyBtn = b => ["zr","zl","r","l","a","b","x","y","up","down","left","right","sll","srl","slr","srr"].some(k => b[k]);
+function jerkOf(s, c){
+  const a = c.acc; if (!s.pa) s.pa = a.slice();
+  const j = Math.hypot(a[0]-s.pa[0], a[1]-s.pa[1], a[2]-s.pa[2]) / c.dt;
+  s.pa = a.slice(); s.j = (s.j || 0) * 0.7 + j * 0.3; return s.j;
+}
+const SCENES = [
+  {id:"ice", name:"Cup with ice", tag:"shake · swirl", desc:"Hold it like a glass. Swirl or shake — cubes clink, the drink sloshes.",
+   tick(s, c){
+     const j = jerkOf(s, c), w = Math.hypot(...c.gyro);
+     if (Math.random() < clamp((j-3)/25, 0, 1) * c.dt * 25){
+       const amp = clamp(0.3 + j/40, 0, 0.95);
+       c.hit("h", RND(750,1250), amp, RND(20,45));
+       for (let i = 0, n = Math.floor(RND(0,3.5)); i < n; i++) c.at(RND(0.03,0.12), () => c.hit("h", RND(800,1250), amp*RND(0.3,0.7), RND(15,30)));
+     }
+     return {lf:RND(60,85), la:clamp(w/700,0,0.35)*RND(0.7,1), hf:400, ha:clamp(w/2500,0,0.08)};
+   }},
+  {id:"ball", name:"Marble in a box", tag:"tilt", desc:"Tilt slowly — feel the marble roll, then thunk into the walls.",
+   init(s){ s.x = 0; s.y = 0; s.vx = 0; s.vy = 0; },
+   tick(s, c){
+     const g = 9.8*0.7, X = 0.07, Y = 0.04;
+     s.vx += -c.acc[0]*g*c.dt; s.vy += -c.acc[1]*g*c.dt; s.vx *= 0.993; s.vy *= 0.993;
+     s.x += s.vx*c.dt; s.y += s.vy*c.dt;
+     const bump = v => { const a = clamp(Math.abs(v)/0.5, 0, 1); if (a > 0.06){ c.hit("l", RND(100,140), a, 70); c.hit("h", RND(250,350), a*0.7, 30); } };
+     if (Math.abs(s.x) > X){ s.x = Math.sign(s.x)*X; bump(s.vx); s.vx *= -0.4; }
+     if (Math.abs(s.y) > Y){ s.y = Math.sign(s.y)*Y; bump(s.vy); s.vy *= -0.4; }
+     const sp = Math.hypot(s.vx, s.vy);
+     return {lf:45+sp*120, la:clamp(sp/0.45,0,0.4), hf:180+sp*500, ha:clamp(sp/1.2,0,0.15)*RND(0.6,1)};
+   },
+   draw(g, W, H, s){
+     const bw = W*0.36, bh = H*0.8, cx = W/2, cy = H/2;
+     g.strokeStyle = "#888"; g.lineWidth = 3; g.strokeRect(cx-bw/2, cy-bh/2, bw, bh);
+     const px = cx - (s.y/0.04)*(bw/2-14), py = cy - (s.x/0.07)*(bh/2-14);
+     g.fillStyle = "#ddd"; g.beginPath(); g.arc(px, py, 12, 0, Math.PI*2); g.fill();
+   }},
+  {id:"soda", name:"Fizzy soda", tag:"shake to fizz", desc:"Bubbles popping in a can. Shake it and the fizz builds up.",
+   tick(s, c){
+     const j = jerkOf(s, c); s.f = Math.max((s.f||0)*0.995, j);
+     for (let i = 0, n = nEvents((35 + s.f*6) * c.dt); i < n; i++) c.hit("h", RND(700,1200), RND(0.05,0.22)*(1+s.f/30), RND(6,14));
+     return {hf:950, ha:0.04+clamp(s.f/200,0,0.1), lf:80, la:clamp(s.f/150,0,0.15)};
+   }},
+  {id:"dice", name:"Dice in your hand", tag:"shake", desc:"Shake it like you're about to roll — heavier, woodier clacks than ice.",
+   tick(s, c){
+     const j = jerkOf(s, c);
+     if (Math.random() < clamp((j-3)/20, 0, 1) * c.dt * 30){
+       const a = clamp(0.35 + j/35, 0, 1);
+       c.hit("h", RND(280,480), a, RND(25,40)); c.hit("l", RND(110,160), a*0.7, 40);
+       if (Math.random() < 0.5) c.at(RND(0.02,0.07), () => c.hit("h", RND(300,450), a*0.5, 25));
+     }
+   }},
+  {id:"sword", name:"Sword clash", tag:"swing", desc:"Swing fast and stop sharply — whoosh, then a ringing metal clang.",
+   tick(s, c){
+     const w = Math.hypot(...c.gyro);
+     s.pk = Math.max(w, (s.pk||0)*0.85);
+     if (s.pk > 420 && w < s.pk*0.4 && c.t > (s.cool||0)){ c.hit("h", RND(1000,1200), 1, 450); c.hit("l", RND(85,110), 0.9, 90); s.cool = c.t + 0.3; s.pk = 0; }
+     return {hf:150+w*0.4, ha:clamp((w-100)/1500,0,0.25), lf:80, la:clamp((w-200)/2500,0,0.15)};
+   }},
+  {id:"engine", name:"Car engine", tag:"hold ZR / push stick", desc:"Idle burble. Hold ZR/ZL/R/L or push the stick up to rev — bounce off the limiter.",
+   init(s){ s.rpm = 900; s.ph = 0; },
+   tick(s, c){
+     const thr = anyBtn({zr:c.btn.zr, zl:c.btn.zl, r:c.btn.r, l:c.btn.l}) ? 1 : clamp(c.stickY, 0, 1);
+     s.rpm += ((900 + thr*6600) - s.rpm) * (thr > 0.1 ? 2.5 : 1.2) * c.dt;
+     if (s.rpm > 7200){ s.rpm = 6700; c.hit("l", 60, 0.6, 40); }
+     s.ph += s.rpm/30*c.dt;
+     const rip = 0.7 + 0.3*Math.sin(s.ph*2*Math.PI);
+     return {lf:clamp(41+(s.rpm-900)/6600*110,41,160), la:(0.22+0.3*thr+s.rpm/7500*0.2)*rip, hf:200+s.rpm/7500*600, ha:0.03+thr*0.12*RND(0.5,1)};
+   }},
+  {id:"gun", name:"Blaster recoil", tag:"press any button", desc:"Each button press fires. Hold for full-auto.",
+   tick(s, c){
+     const trig = anyBtn(c.btn);
+     if (trig && c.t >= (s.next||0)){ c.hit("l", RND(55,70), 1, 150); c.hit("h", RND(180,260), 0.9, 50); c.at(0.03, () => c.hit("h", RND(900,1200), 0.35, 60)); s.next = c.t + 0.11; }
+     if (!trig) s.next = 0;
+   }},
+  {id:"heart", name:"Heartbeat", tag:"move = faster", desc:"Lub-dub in your palm. Move it around and the pulse races.",
+   tick(s, c){
+     s.m = (s.m||0)*0.985 + Math.hypot(...c.gyro)*0.015;
+     const bpm = 64 + Math.min(90, s.m/3);
+     if (c.t >= (s.next||0)){ c.hit("l", 55, 0.9, 110); c.at(0.27*Math.sqrt(70/bpm), () => c.hit("l", 48, 0.6, 100)); s.next = c.t + 60/bpm; }
+   }},
+  {id:"rain", name:"Rain on umbrella", tag:"auto", desc:"Random droplets pattering on fabric, with the odd fat drop.",
+   tick(s, c){
+     for (let i = 0, n = nEvents(22*c.dt); i < n; i++) c.hit("h", RND(450,1100), RND(0.12,0.45), RND(12,28));
+     if (Math.random() < 1.5*c.dt) c.hit("l", RND(90,130), RND(0.3,0.5), 40);
+     return {hf:700, ha:0.03};
+   }},
+  {id:"steps", name:"Footsteps on gravel", tag:"auto", desc:"A heel strike thud plus crunchy stones under each step.",
+   tick(s, c){
+     if (c.t >= (s.next||0)){
+       c.hit("l", RND(60,80), 0.65, 130);
+       for (let i = 0; i < 7; i++) c.at(RND(0,0.15), () => c.hit("h", RND(300,800), RND(0.15,0.4), RND(10,25)));
+       s.next = c.t + 0.55 + RND(-0.04,0.04);
+     }
+   }},
+  {id:"purr", name:"Purring cat", tag:"auto", desc:"Low, rough purr that swells with each breath in and out.",
+   tick(s, c){
+     const cyc = c.t % 2.6, env = cyc < 1.2 ? Math.sin(cyc/1.2*Math.PI) : 0.7*Math.sin((cyc-1.2)/1.4*Math.PI);
+     return {lf:45+RND(-3,3), la:(0.15+0.35*env)*RND(0.55,1), hf:120, ha:0.03*env};
+   }},
+  {id:"pong", name:"Ping-pong ball", tag:"auto", desc:"A ball dropped on a table — bounces get faster and softer.",
+   init(s){ s.next = 0.2; s.iv = 0.55; s.a = 0.9; },
+   tick(s, c){
+     if (c.t < s.next) return;
+     if (s.iv < 0.045){ s.iv = 0.55; s.a = 0.9; s.next = c.t + 1.2; return; }
+     c.hit("h", RND(330,380), s.a, 25); c.hit("l", 160, s.a*0.6, 25);
+     s.next = c.t + s.iv; s.iv *= 0.78; s.a *= 0.9;
+   }},
+  {id:"boom", name:"Explosion", tag:"auto · button", desc:"Deep blast with rumbling debris. Repeats, or press a button to detonate.",
+   tick(s, c){
+     const b = anyBtn(c.btn), edge = b && !s.held; s.held = b;
+     if (c.t >= (s.next||0) || edge){
+       c.hit("l", 41, 1, 1400); c.hit("l", 60, 0.8, 500); c.hit("h", 90, 0.9, 200);
+       for (let i = 0; i < 14; i++){ const d = RND(0.05,1.1); c.at(d, () => c.hit("h", RND(90,300), RND(0.2,0.6)*(1.2-d), RND(40,90))); }
+       s.next = c.t + 4;
+     }
+   }},
+  {id:"clock", name:"Ticking clock", tag:"auto", desc:"Tick… tock… a crisp mechanical escapement.",
+   tick(s, c){
+     if (c.t >= (s.next||0)){ s.k = !s.k; c.hit("h", s.k ? 1150 : 850, 0.7, 15); c.hit("l", 200, 0.15, 15); s.next = c.t + 1; }
+   }},
+  {id:"phone", name:"Phone on silent", tag:"auto", desc:"Bzzzt… bzzzt… an incoming call on the desk.",
+   tick(s, c){
+     if (c.t >= (s.next||0)){ c.hit("l", 170, 0.85, 400, true); c.hit("h", 340, 0.15, 400, true); c.at(0.6, () => { c.hit("l", 170, 0.85, 400, true); c.hit("h", 340, 0.15, 400, true); }); s.next = c.t + 2.4; }
+   }},
+  {id:"ratchet", name:"Ratchet dial", tag:"rotate stick", desc:"Push the stick to the edge and roll it round — a click every 15°.",
+   tick(s, c){
+     const [x, y] = c.stick, r = Math.hypot(x, y);
+     if (r > 0.6){
+       const a = Math.atan2(y, x);
+       if (s.pa != null){
+         let d = a - s.pa; if (d > Math.PI) d -= 2*Math.PI; if (d < -Math.PI) d += 2*Math.PI;
+         s.acc = (s.acc||0) + d;
+         while (Math.abs(s.acc) >= Math.PI/12){ s.acc -= Math.sign(s.acc)*Math.PI/12; c.hit("h", RND(550,650), 0.6, 14); c.hit("l", 200, 0.25, 14); }
+       }
+       s.pa = a;
+     } else s.pa = null;
+   }}
+];
+
+/* ---------- MCU / IR camera helpers (protocol per CTCaer's jc_toolkit) ---------- */
+const CRC8T = (() => { const t = new Uint8Array(256); for (let i = 0; i < 256; i++){ let c = i; for (let k = 0; k < 8; k++) c = c & 0x80 ? ((c << 1) ^ 0x07) & 0xFF : (c << 1) & 0xFF; t[i] = c; } return t; })();
+const crc8 = b => { let c = 0; for (const x of b) c = CRC8T[c ^ x]; return c; };
+// [resolution register, last fragment index, width, height]
+const IR_RES = {"320x240":[0x00,0xFF,320,240], "160x120":[0x50,0x3F,160,120], "80x60":[0x64,0x0F,80,60], "40x30":[0x69,0x03,40,30]};
+const IR_PAL = (() => {
+  const stops = {iron:[[0,"#000014"],[0.18,"#3c0092"],[0.38,"#b00198"],[0.55,"#e0373a"],[0.72,"#f68100"],[0.88,"#fec700"],[1,"#fffff6"]],
+                 grey:[[0,"#000000"],[1,"#ffffff"]], night:[[0,"#000000"],[0.7,"#20d040"],[1,"#d8ffd8"]]};
+  const out = {};
+  for (const [name, st] of Object.entries(stops)){
+    const lut = new Uint8Array(256*3), rgb = h => [1,3,5].map(i => parseInt(h.substr(i,2),16));
+    for (let v = 0; v < 256; v++){
+      const x = v/255; let i = 0; while (i < st.length-2 && x > st[i+1][0]) i++;
+      const [x0,c0] = st[i], [x1,c1] = st[i+1], f = clamp((x-x0)/(x1-x0),0,1), a = rgb(c0), b = rgb(c1);
+      for (let k = 0; k < 3; k++) lut[v*3+k] = Math.round(a[k] + (b[k]-a[k])*f);
+    }
+    out[name] = lut;
+  }
+  return out;
+})();
+/* Home button LED (subcommand 0x38). Byte0: [mini-cycles | cycle duration], byte1: [start intensity | repeats (0=forever)],
+   then per pair of mini cycles: [int1|int2], [fade1|hold1], [fade2|hold2]. Breathe/heartbeat patterns from jc_toolkit. */
+const HOME_LED = {
+  off:      () => [0x00, 0x00],
+  on:       L  => [0x1F, L << 4, L << 4, 0x0F, 0x00],
+  breathe:  () => [0x28, 0x20, 0xF2, 0xF0, 0xF0],
+  pulse:    () => [0x2F, 0x00, 0xF0, 0x81, 0x81],
+  blink:    () => [0x28, 0xF0, 0xF0, 0x02, 0x02],
+  heartbeat:() => [0xF1, 0x00, 0xF0,0xF0,0xF0,0xF0,0xF0,0xF0, 0x00,0xFF,0xFF, 0x00,0xFF,0xFF, 0x00,0xFF,0xFF, 0x00,0xFF,0xFF, 0x00,0xFF,0xFF]
+};
+
+/* ---------- calibration decoding ---------- */
+function dec9(b){
+  return [((b[1]<<8)&0xF00)|b[0], (b[2]<<4)|(b[1]>>4), ((b[4]<<8)&0xF00)|b[3],
+          (b[5]<<4)|(b[4]>>4), ((b[7]<<8)&0xF00)|b[6], (b[8]<<4)|(b[7]>>4)];
+}
+const defaultStick = () => ({cx:2048, cy:2048, xmin:1400, xmax:1400, ymin:1400, ymax:1400, src:"default"});
+function stickCal(side, b, src){
+  if (!b || b.every(v => v === 0xFF)) return null;
+  const v = dec9(b);
+  const c = side === "L"
+    ? {xmax:v[0], ymax:v[1], cx:v[2], cy:v[3], xmin:v[4], ymin:v[5]}
+    : {cx:v[0], cy:v[1], xmin:v[2], ymin:v[3], xmax:v[4], ymax:v[5]};
+  if ([c.xmin,c.xmax,c.ymin,c.ymax].some(r => r < 300) || c.cx < 500 || c.cy < 500) return null;
+  c.src = src; return c;
+}
+
+/* ---------- Joy-Con device ---------- */
+const devices = new Map();
+
+class JoyCon {
+  constructor(device, index){
+    this.device = device;
+    this.pid = device.productId;
+    this.kind = this.pid === 0x2006 ? "L" : this.pid === 0x2007 ? "R" : "P";
+    this.sides = this.kind === "P" ? ["L","R"] : [this.kind];
+    this.name = NAMES[this.pid] || device.productName || "Controller";
+    this.counter = 0; this.queue = Promise.resolve(); this.pending = null;
+    this.btnList = this.sides.flatMap(s => BTN[s]).filter(b => this.kind !== "P" || !/^s[lr][lr]$/.test(b[0]));
+    this.btnState = {}; this.btnCount = {}; this.btnDone = new Set();
+    this.sticks = {};
+    for (const s of this.sides) this.sticks[s] = {raw:[2048,2048], n:[0,0], cal:defaultStick(), dead:0, bins:new Float32Array(36), trail:[]};
+    this.imu = {accO:[0,0,0], accS:[4/16384,4/16384,4/16384], gyrO:[0,0,0], gyrS:[936/13371,936/13371,936/13371], calSrc:"default",
+                bias:[0,0,0], q:[1,0,0,0], acc:[0,0,0], gyro:[0,0,0], peakG:0, peakDps:0, axisHit:[0,0,0], calib:null, msg:"", seen:false};
+    this.G = {n:400, buf:new Float32Array(400*6), head:0};
+    this.rate = 0; this._cnt = 0; this._t0 = performance.now(); this.lastId = 0;
+    this.battery = null; this.raw = null; this.rumbleFired = false; this.rumbleToken = 0;
+    this.leds = 1 << (index % 4); this.ledFlash = 0;
+    this.info = {}; this.alive = true; this._lastText = 0;
+    this.waiters = []; this.ir = null; this.homeMode = "off"; this.homeLevel = 15; this.homeTested = false; this.irRot = 0; this.irPal = "iron";
+    this.irCfg = {expUs:300, auto:true, leds:0x00, far:0x0F, near:0x10, gain:1, exlf:true, denoise:true, flip:0};
+    this.scene = null; this.hapticGain = 1; this.hOut = null; this.hHist = {n:240, buf:new Float32Array(480), head:0};
+    this.onReport = this.onReport.bind(this);
+    this.buildUI();
+  }
+
+  /* ----- low level I/O ----- */
+  async send01(id, args){
+    const d = new Uint8Array(10 + args.length);
+    d[0] = this.counter++ & 0xF; d.set(NEUTRAL, 1); d[9] = id; d.set(args, 10);
+    await this.device.sendReport(0x01, d);
+  }
+  subcmd(id, args=[], timeout=400, retries=3){
+    const run = async () => {
+      let lastErr;
+      for (let a = 0; a < retries; a++){
+        let timer;
+        const p = new Promise((res, rej) => { this.pending = {id, res}; timer = setTimeout(() => rej(new Error("timeout")), timeout); });
+        try { await this.send01(id, args); return await p; }
+        catch (e){ lastErr = e; }
+        finally { clearTimeout(timer); this.pending = null; }
+      }
+      throw lastErr;
+    };
+    const r = this.queue.then(run);
+    this.queue = r.catch(() => {});
+    return r;
+  }
+  // Full 48-byte output report. crc '21' = MCU config (0x01/0x21), '11' = MCU request (0x11).
+  pkt(reportId, bytes, crc){
+    const d = new Uint8Array(48);
+    d[0] = this.counter++ & 0xF; d.set(NEUTRAL, 1); d.set(bytes, 9);
+    if (crc === "21") d[47] = crc8(d.subarray(11, 47));
+    if (crc === "11"){ d[46] = crc8(d.subarray(10, 46)); d[47] = 0xFF; }
+    if (!this.device.opened) return Promise.resolve();
+    return this.device.sendReport(reportId, d);
+  }
+  // Send something and wait for any input report matching pred(id, dataView). Serialized with subcmds.
+  request(send, pred, timeout=300, retries=4){
+    const run = async () => {
+      let err;
+      for (let a = 0; a < retries; a++){
+        let w, timer;
+        const p = new Promise((res, rej) => { w = {pred, res}; this.waiters.push(w); timer = setTimeout(() => rej(new Error("timeout")), timeout); });
+        try { await send(); return await p; }
+        catch (e){ err = e; }
+        finally { clearTimeout(timer); this.waiters = this.waiters.filter(x => x !== w); }
+      }
+      throw err;
+    };
+    const r = this.queue.then(run);
+    this.queue = r.catch(() => {});
+    return r;
+  }
+
+  /* ----- Home button light ----- */
+  async setHome(mode){
+    this.homeMode = mode; this.homeTested = true;
+    const bytes = mode === "on" ? HOME_LED.on(this.homeLevel) : HOME_LED[mode]();
+    this.el.querySelectorAll(".homeglow").forEach(g => { g.setAttribute("class", "homeglow hl-" + mode); g.style.opacity = mode === "on" ? this.homeLevel/15 : ""; });
+    await this.subcmd(0x38, bytes).catch(e => console.warn("home led", e));
+  }
+
+  /* ----- IR camera ----- */
+  irWriteRegs(regs){
+    const list = regs.concat([[0x00, 0x07, 0x01]]).slice(0, 9);   // last reg = "finalize"
+    return this.pkt(0x01, [0x21, 0x23, 0x04, list.length, ...list.flat()], "21").catch(() => {});
+  }
+  irAck(frag){ return this.pkt(0x11, [0x03, 0x00, 0x00, 0x00, frag], "11").catch(() => {}); }
+  irRequestMissing(next){ return this.pkt(0x11, [0x03, 0x00, 0x01, next & 0xFF, 0x00], "11").catch(() => {}); }
+  async irStart(resKey){
+    if (this.ir?.on) return;
+    const [reg, frags, w, h] = IR_RES[resKey];
+    const ir = this.ir = {on:true, streaming:false, w, h, frags, reg, buf:new Uint8Array(w*h), frame:new Uint8Array(w*h), prevFrame:null,
+      prev:0, fc:0, fps:0, _fc:0, _t:performance.now(), stats:{}, motion:0, status:"Starting…", newFrame:false, aeTick:0};
+    const D = (d, i) => d.byteLength > i ? d.getUint8(i) : -1;
+    const status = id => (id, d) => id === 0x31 && D(d,48) === 0x01 && D(d,55) === id;
+    const c = this.irCfg, exp = Math.round(c.expUs * 31200 / 1000);
+    try {
+      ir.status = "Switching to MCU report mode…";      await this.subcmd(0x03, [0x31]);
+      ir.status = "Powering on the IR camera…";         await this.subcmd(0x22, [0x01]);
+      ir.status = "Waiting for camera MCU standby…";
+      await this.request(() => this.pkt(0x11, [0x01]), (id, d) => id === 0x31 && D(d,48) === 0x01 && D(d,55) === 0x01, 150, 20);
+      ir.status = "Switching MCU to IR mode…";
+      await this.request(() => this.pkt(0x01, [0x21, 0x21, 0x00, 0x05], "21"), (id, d) => id === 0x21 && D(d,13) === 0x21 && D(d,14) === 0x01, 300, 6);
+      await this.request(() => this.pkt(0x11, [0x01]), (id, d) => id === 0x31 && D(d,48) === 0x01 && D(d,55) === 0x05, 150, 20);
+      ir.status = "Configuring image transfer…";
+      await this.request(() => this.pkt(0x01, [0x21, 0x23, 0x01, 0x07, frags, 0x00, 0x05, 0x00, 0x18], "21"), (id, d) => id === 0x21 && D(d,14) === 0x0B, 300, 6);
+      const regs1 = [[0x00,0x2E,reg],[0x01,0x30,exp & 0xFF],[0x01,0x31,exp >> 8],[0x01,0x32,0x00],[0x00,0x10,c.leds],
+                     [0x01,0x2E,(c.gain & 0xF) << 4],[0x01,0x2F,(c.gain & 0xF0) >> 4],[0x00,0x0E,c.exlf ? 0x03 : 0x00],[0x01,0x43,0xC8]];
+      await this.request(async () => { await this.pkt(0x01, [0x21, 0x23, 0x04, 9, ...regs1.flat()], "21"); await this.pkt(0x11, [0x03, 0x02], "11"); },
+                         (id, d) => id === 0x21 && D(d,14) === 0x13, 300, 6);
+      const regs2 = [[0x00,0x11,c.far],[0x00,0x12,c.near],[0x00,0x2D,c.flip],[0x01,0x67,c.denoise ? 1 : 0],[0x01,0x68,0x23],[0x01,0x69,0x44],
+                     [0x00,0x04,reg === 0x69 ? 0x2D : 0x32],[0x00,0x07,0x01]];
+      await this.request(() => this.pkt(0x01, [0x21, 0x23, 0x04, 8, ...regs2.flat()], "21"),
+                         (id, d) => id === 0x21 && (D(d,14) === 0x13 || D(d,14) === 0x23), 300, 6);
+      ir.status = "Streaming"; ir.streaming = true;
+      this.irAck(0);
+    } catch (e){
+      console.warn("IR start", e);
+      ir.status = "Couldn't start the IR camera (" + e.message + "). Make sure it's a Joy-Con (R), then try again.";
+      await this.irStop(true);
+    }
+  }
+  async irStop(keepStatus=false){
+    const ir = this.ir; if (!ir) return;
+    ir.on = false; ir.streaming = false;
+    if (!keepStatus) ir.status = "Stopped";
+    await this.subcmd(0x22, [0x00]).catch(() => {});
+    await this.subcmd(0x03, [0x30]).catch(() => {});
+  }
+  irOnReport(d){
+    const ir = this.ir;
+    if (!ir || !ir.streaming || d.byteLength < 49) return;
+    const type = d.getUint8(48);
+    if (type === 0x03 && d.byteLength >= 358){
+      const f = d.getUint8(51);
+      if (f <= ir.frags && f*300 < ir.buf.length) ir.buf.set(new Uint8Array(d.buffer, d.byteOffset + 58, Math.min(300, ir.buf.length - f*300)), f*300);
+      ir.prev = f;
+      this.irAck(f);
+      if (f === ir.frags){
+        ir.prevFrame = ir.frame.slice();
+        ir.frame.set(ir.buf); ir.newFrame = true; ir.fc++; ir._fc++;
+        ir.stats = {avg: d.getUint8(52), white: d.getUint16(54, true), noise: d.getUint16(56, true)};
+        if (this.irCfg.auto && (++ir.aeTick % 3 === 0)) this.irAutoExposure(ir.stats.white);
+      }
+    } else if (type === 0xFF) this.irAck(ir.prev);
+    else if (type === 0x00) this.irRequestMissing(ir.prev + 1);
+  }
+  irAutoExposure(white){
+    const ir = this.ir, maxPx = (Math.min(ir.frags, 217) + 1) * 300, pct = white * 100 / maxPx, c = this.irCfg;
+    let us = c.expUs;
+    if (pct === 0) us += 10; else if (pct > 5) us -= Math.floor(pct/4) * 20; else return;
+    us = clamp(us, 0, 600);
+    if (us === c.expUs) return;
+    c.expUs = us;
+    const v = Math.round(us * 31200 / 1000);
+    this.irWriteRegs([[0x01,0x30,v & 0xFF],[0x01,0x31,v >> 8]]);
+  }
+
+  async spi(addr, len){
+    const r = await this.subcmd(0x10, [addr&0xff, (addr>>8)&0xff, (addr>>16)&0xff, (addr>>24)&0xff, len]);
+    return r.slice(5, 5 + len);
+  }
+  sendRumble(bytes){
+    if (!this.device.opened) return Promise.resolve();
+    const d = new Uint8Array(9); d[0] = this.counter++ & 0xF; d.set(bytes, 1);
+    return this.device.sendReport(0x10, d).catch(() => {});
+  }
+
+  /* ----- init sequence ----- */
+  async init(){
+    const d = this.device;
+    if (!d.opened) await d.open();
+    d.addEventListener("inputreport", this.onReport);
+    const step = async (label, fn) => { this.setStatus(label + "…"); try { await fn(); } catch(e){ console.warn(label, e); } };
+
+    await step("Reading device info", async () => {
+      const r = await this.subcmd(0x02);
+      this.info.fw = r[0] + "." + hex2(r[1]);
+      this.info.type = ({1:"Joy-Con (L)",2:"Joy-Con (R)",3:"Pro Controller"})[r[2]] || ("type " + r[2]);
+      this.info.mac = Array.from(r.slice(4,10), hex2).join(":");
+    });
+    await step("Enabling IMU", () => this.subcmd(0x40, [0x01]));
+    await step("Enabling vibration", () => this.subcmd(0x48, [0x01]));
+    await step("Switching to full report mode", () => this.subcmd(0x03, [0x30]));
+    await step("Reading colours", async () => {
+      const c = await this.spi(0x6050, 6);
+      const body = "#" + Array.from(c.slice(0,3), b => b.toString(16).padStart(2,"0")).join("");
+      if (!c.slice(0,3).every(v => v === 0xFF) || this.kind === "P") this.el.style.setProperty("--body", body);
+      this.info.color = body.toUpperCase();
+    });
+    await step("Reading stick calibration", async () => {
+      const f = await this.spi(0x603D, 18);
+      let u = null; try { u = await this.spi(0x8010, 22); } catch(e){}
+      for (const s of this.sides){
+        const fb = s === "L" ? f.slice(0,9) : f.slice(9,18);
+        let c = null;
+        if (u){
+          const off = s === "L" ? 0 : 11;
+          if (u[off] === 0xB2 && u[off+1] === 0xA1) c = stickCal(s, u.slice(off+2, off+11), "user");
+        }
+        c = c || stickCal(s, fb, "factory") || defaultStick();
+        this.sticks[s].cal = c;
+        try {
+          const p = await this.spi(s === "L" ? 0x6086 : 0x6098, 18);
+          const dz = ((p[4]<<8)&0xF00) | p[3];
+          if (dz < 1000) this.sticks[s].dead = dz;
+        } catch(e){}
+      }
+    });
+    await step("Reading IMU calibration", async () => {
+      let src = "factory", b = await this.spi(0x6020, 24);
+      try { const u = await this.spi(0x8026, 26); if (u[0] === 0xB2 && u[1] === 0xA1){ b = u.slice(2); src = "user"; } } catch(e){}
+      const dv = new DataView(b.buffer, b.byteOffset, 24), v = i => dv.getInt16(i*2, true);
+      const accO=[v(0),v(1),v(2)], accC=[v(3),v(4),v(5)], gyrO=[v(6),v(7),v(8)], gyrC=[v(9),v(10),v(11)];
+      const ok = [0,1,2].every(i => accC[i]-accO[i] > 1000 && gyrC[i]-gyrO[i] > 1000);
+      if (ok){
+        this.imu.accO = accO; this.imu.gyrO = gyrO;
+        this.imu.accS = accC.map((c,i) => 4 / (c - accO[i]));
+        this.imu.gyrS = gyrC.map((c,i) => 936 / (c - gyrO[i]));
+        this.imu.calSrc = src;
+      }
+    });
+    await step("Setting player lights", () => this.setLeds());
+    this.setStatus("Ready");
+    this.startCalib(true);
+  }
+
+  async setLeds(){
+    await this.subcmd(0x30, [((this.ledFlash & 0xF) << 4) | (this.leds & 0xF)]);
+  }
+
+  /* ----- rumble ----- */
+  async play(steps){
+    const tok = ++this.rumbleToken;
+    this.rumbleFired = true;
+    for (const s of steps){
+      const bytes = s.a > 0 ? [...encodeRumble(s.f, s.a), ...encodeRumble(s.f, s.a)] : NEUTRAL;
+      const end = performance.now() + s.ms;
+      do { if (tok !== this.rumbleToken) return; await this.sendRumble(bytes); await sleep(30); }
+      while (performance.now() < end);
+    }
+    if (tok === this.rumbleToken) await this.sendRumble(NEUTRAL);
+  }
+  stopRumble(){ this.rumbleToken++; this.sendRumble(NEUTRAL); }
+
+  /* ----- haptic scene engine ----- */
+  startScene(sc){
+    const tok = ++this.rumbleToken;
+    this.rumbleFired = true;
+    const s = {}; sc.init?.(s);
+    this.scene = {sc, s, tok};
+    const imps = [], sched = [], t0 = performance.now();
+    let last = t0;
+    const ctx = {
+      hit: (band, f, a, ms, flat=false) => imps.push({band, f, a, ms, flat, t: performance.now(), done: false}),
+      at: (d, fn) => sched.push({t: performance.now() + d*1000, fn})
+    };
+    (async () => {
+      while (tok === this.rumbleToken && this.alive){
+        const now = performance.now();
+        ctx.t = (now - t0) / 1000; ctx.dt = clamp((now - last) / 1000, 0.005, 0.1); last = now;
+        ctx.acc = this.imu.acc; ctx.gyro = this.imu.gyro; ctx.btn = this.btnState;
+        ctx.stick = this.sticks[this.sides[0]].n;
+        ctx.stickY = Math.max(...this.sides.map(x => this.sticks[x].n[1]));
+        for (let i = sched.length - 1; i >= 0; i--) if (sched[i].t <= now){ const fn = sched[i].fn; sched.splice(i, 1); fn(); }
+        const b = sc.tick(s, ctx) || {};
+        const out = {h:{f:b.hf||320, a:b.ha||0, best:b.ha||0}, l:{f:b.lf||160, a:b.la||0, best:b.la||0}};
+        for (let i = imps.length - 1; i >= 0; i--){
+          const m = imps[i], age = now - m.t;
+          if (m.done && age > m.ms){ imps.splice(i, 1); continue; }
+          const a = (m.flat || !m.done) ? m.a : m.a * Math.exp(-3 * age / m.ms);
+          m.done = true;
+          const o = out[m.band]; o.a += a; if (a > o.best){ o.best = a; o.f = m.f; }
+        }
+        const g = this.hapticGain;
+        const o = {hf: out.h.f, ha: clamp(out.h.a*g, 0, 1), lf: out.l.f, la: clamp(out.l.a*g, 0, 1)};
+        this.hOut = o;
+        const H = this.hHist; H.buf[H.head*2] = o.ha; H.buf[H.head*2+1] = o.la; H.head = (H.head + 1) % H.n;
+        const e = encodeDual(o.hf, o.ha, o.lf, o.la);
+        await this.sendRumble([...e, ...e]);
+        await sleep(12);
+      }
+      if (this.scene && this.scene.tok === tok) this.scene = null;
+    })();
+  }
+
+  /* ----- gyro calibration ----- */
+  startCalib(auto=false){
+    this.imu.calib = {n:0, sum:[0,0,0], min:[1e9,1e9,1e9], max:[-1e9,-1e9,-1e9], target:160, auto};
+    this.imu.msg = auto ? "Auto-calibrating gyro — keep still…" : "Calibrating — keep it still…";
+  }
+
+  /* ----- input ----- */
+  onReport(e){
+    const id = e.reportId, d = e.data;
+    this._cnt++; this.lastId = id;
+    const now = performance.now();
+    if (now - this._t0 >= 1000){ this.rate = this._cnt * 1000 / (now - this._t0); this._cnt = 0; this._t0 = now; }
+    this.raw = {id, bytes: new Uint8Array(d.buffer, d.byteOffset, d.byteLength).slice()};
+    for (const w of this.waiters) if (w.pred(id, d)) w.res(d);
+    if (id === 0x30 || id === 0x31 || id === 0x21){
+      this.parseStd(d);
+      if ((id === 0x30 || id === 0x31) && d.byteLength >= 48) this.parseIMU(d);
+      if (id === 0x31) this.irOnReport(d);
+      if (id === 0x21 && this.pending && d.getUint8(13) === this.pending.id){
+        this.pending.res(new Uint8Array(d.buffer, d.byteOffset + 14, d.byteLength - 14).slice());
+      }
+    }
+  }
+  parseStd(d){
+    const bat = d.getUint8(1) >> 4;
+    this.battery = {lvl: bat >> 1, charging: !!(bat & 1)};
+    for (const [id,, byte, mask] of this.btnList){
+      const on = (d.getUint8(byte) & mask) !== 0;
+      if (on && !this.btnState[id]){ this.btnCount[id] = (this.btnCount[id]||0) + 1; this.btnDone.add(id); }
+      this.btnState[id] = on;
+    }
+    for (const s of this.sides){
+      const o = s === "L" ? 5 : 8, st = this.sticks[s], c = st.cal;
+      const b0 = d.getUint8(o), b1 = d.getUint8(o+1), b2 = d.getUint8(o+2);
+      const x = b0 | ((b1 & 0x0F) << 8), y = (b1 >> 4) | (b2 << 4);
+      const dx = x - c.cx, dy = y - c.cy;
+      const nx = dx >= 0 ? dx / c.xmax : dx / c.xmin, ny = dy >= 0 ? dy / c.ymax : dy / c.ymin;
+      st.raw = [x, y]; st.n = [nx, ny];
+      const r = Math.hypot(nx, ny);
+      if (r > 0.25){
+        const k = Math.floor(((Math.atan2(ny, nx) + Math.PI) / (2*Math.PI)) * 36) % 36;
+        if (r > st.bins[k]) st.bins[k] = Math.min(r, 1.3);
+      }
+      st.trail.push([nx, ny]); if (st.trail.length > 50) st.trail.shift();
+    }
+  }
+  parseIMU(d){
+    const I = this.imu, flip = this.kind === "R";
+    I.seen = true;
+    for (let f = 0; f < 3; f++){
+      const o = 12 + f*12;
+      const acc = [0,1,2].map(i => (d.getInt16(o + i*2, true) - I.accO[i]) * I.accS[i]);
+      const gyr = [0,1,2].map(i => (d.getInt16(o + 6 + i*2, true) - I.gyrO[i]) * I.gyrS[i]);
+      if (flip){ acc[1] = -acc[1]; acc[2] = -acc[2]; gyr[1] = -gyr[1]; gyr[2] = -gyr[2]; }
+      const C = I.calib;
+      if (C){
+        for (let i = 0; i < 3; i++){ C.sum[i] += gyr[i]; C.min[i] = Math.min(C.min[i], gyr[i]); C.max[i] = Math.max(C.max[i], gyr[i]); }
+        if (++C.n >= C.target){
+          const still = [0,1,2].every(i => C.max[i] - C.min[i] < 10);
+          if (still){ I.bias = C.sum.map(s => s / C.n); I.msg = "Gyro calibrated (bias " + I.bias.map(b => b.toFixed(1)).join(", ") + " °/s)"; I.q = [1,0,0,0]; }
+          else I.msg = C.auto ? "Moved during auto-calibration — lay it flat and press Calibrate gyro." : "Movement detected — lay it flat and retry.";
+          I.calib = null;
+        }
+      }
+      for (let i = 0; i < 3; i++) gyr[i] -= I.bias[i];
+      I.acc = acc; I.gyro = gyr;
+      const g = Math.hypot(...acc), w = Math.max(...gyr.map(Math.abs));
+      if (g > I.peakG) I.peakG = g;
+      if (w > I.peakDps) I.peakDps = w;
+      for (let i = 0; i < 3; i++) if (Math.abs(gyr[i]) > 150) I.axisHit[i] = 1;
+      this.fuse(gyr.map(v => v * Math.PI / 180), acc, 0.005);
+      const G = this.G, p = G.head * 6;
+      G.buf[p] = gyr[0]; G.buf[p+1] = gyr[1]; G.buf[p+2] = gyr[2];
+      G.buf[p+3] = acc[0]; G.buf[p+4] = acc[1]; G.buf[p+5] = acc[2];
+      G.head = (G.head + 1) % G.n;
+    }
+  }
+  // Mahony-style complementary filter: gyro integration + gravity correction.
+  fuse(g, a, dt){
+    let [qw,qx,qy,qz] = this.imu.q, [gx,gy,gz] = g;
+    const an = Math.hypot(a[0], a[1], a[2]);
+    if (an > 0.6 && an < 1.4){
+      const ax = a[0]/an, ay = a[1]/an, az = a[2]/an;
+      const vx = 2*(qx*qz - qw*qy), vy = 2*(qw*qx + qy*qz), vz = qw*qw - qx*qx - qy*qy + qz*qz;
+      const K = 1.5;
+      gx += K*(ay*vz - az*vy); gy += K*(az*vx - ax*vz); gz += K*(ax*vy - ay*vx);
+    }
+    const h = 0.5*dt;
+    const nw = qw + (-qx*gx - qy*gy - qz*gz)*h, nx = qx + (qw*gx + qy*gz - qz*gy)*h;
+    const ny = qy + (qw*gy - qx*gz + qz*gx)*h, nz = qz + (qw*gz + qx*gy - qy*gx)*h;
+    const n = Math.hypot(nw, nx, ny, nz) || 1;
+    this.imu.q = [nw/n, nx/n, ny/n, nz/n];
+  }
+
+  /* ----- UI ----- */
+  setStatus(t){ if (this.ui) this.ui.status.textContent = t; }
+
+  buildUI(){
+    const el = document.createElement("article");
+    el.className = "card";
+    el.style.setProperty("--accent", ACCENT[this.kind]);
+    el.style.setProperty("--body", ACCENT[this.kind]);
+    const svgs = this.sides.map(s => s === "L" ? svgL() : svgR()).join("");
+    const chips = this.btnList.map(([id,label]) => `<div class="chip" data-chip="${id}">${label}<small data-cnt="${id}">0×</small></div>`).join("");
+    const stickPanels = this.sides.map(s => `
+      <section class="panel">
+        <h3>${this.kind === "P" ? (s === "L" ? "Left" : "Right") + " stick" : "Analog stick"}<button class="small r" data-act="stickreset" data-side="${s}">Reset range</button></h3>
+        <div class="stickwrap">
+          <canvas class="stick" data-stick-c="${s}" width="360" height="360"></canvas>
+          <dl class="kv">
+            <dt>Raw X</dt><dd data-k="rx${s}">–</dd><dt>Raw Y</dt><dd data-k="ry${s}">–</dd>
+            <dt>X</dt><dd data-k="nx${s}">–</dd><dt>Y</dt><dd data-k="ny${s}">–</dd>
+            <dt>Radius</dt><dd data-k="r${s}">–</dd><dt>Angle</dt><dd data-k="a${s}">–</dd>
+            <dt>Range</dt><dd data-k="cov${s}">0%</dd><dt>Dead zone</dt><dd data-k="dz${s}">–</dd>
+            <dt>Calib</dt><dd data-k="cs${s}">–</dd>
+          </dl>
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:6px">Roll the stick around the edge slowly — the outline shows the reach in every direction.</div>
+      </section>`).join("");
+    el.innerHTML = `
+      <div class="card-head">
+        <span class="swatch"></span>
+        <h2>${this.name}</h2>
+        <span class="status">Connecting…</span>
+        <span class="spacer"></span>
+        <span class="pill">Battery <b data-k="bat">–</b></span>
+        <span class="pill">Reports <b data-k="hz">–</b></span>
+        <span class="pill">FW <b data-k="fw">–</b></span>
+        <button class="small" data-act="disconnect">Disconnect</button>
+      </div>
+      <div class="grid">
+        <section class="panel ctl">${svgs}</section>
+        <section class="panel">
+          <h3>Buttons <span class="r" data-k="btncount">0 / ${this.btnList.length}</span></h3>
+          <div class="chips">${chips}</div>
+          <div class="muted" style="font-size:12px;margin-top:8px">Each button turns green-outlined once it's been pressed. Counter = presses.</div>
+        </section>
+        ${stickPanels}
+        <section class="panel">
+          <h3>Motion (3D)<span class="r"><button class="small" data-act="reset3d">Reset view</button></span></h3>
+          <div class="scene"><div class="model" data-model>
+            <div class="face front">${(this.sides[0] === "L" ? svgL : svgR)(true)}</div>
+            <div class="face back"></div><div class="face l"></div><div class="face r"></div><div class="face t"></div><div class="face bt"></div>
+          </div></div>
+          <div class="vals">
+            <span></span><span class="h cx">X</span><span class="h cy">Y</span><span class="h cz">Z</span>
+            <span class="h">Gyro °/s</span><span data-k="gx">–</span><span data-k="gy">–</span><span data-k="gz">–</span>
+            <span class="h">Accel G</span><span data-k="ax">–</span><span data-k="ay">–</span><span data-k="az">–</span>
+          </div>
+          <div class="row" style="font-size:12px"><span class="pill">|a| <b data-k="amag">–</b></span><span class="pill">Peak <b data-k="pk">–</b></span>
+            <button class="small" data-act="calib">Calibrate gyro</button><button class="small" data-act="peak">Reset peaks</button></div>
+          <div class="msg" data-k="imumsg"></div>
+        </section>
+        <section class="panel">
+          <h3>HD Rumble</h3>
+          <label class="sl"><span>Frequency</span><input type="range" data-in="freq" min="81" max="626" value="160"><span data-k="freq">160 Hz</span></label>
+          <label class="sl"><span>Amplitude</span><input type="range" data-in="amp" min="0" max="100" value="60"><span data-k="amp">0.60</span></label>
+          <label class="sl"><span>Duration</span><input type="range" data-in="dur" min="50" max="2000" step="50" value="400"><span data-k="dur">400 ms</span></label>
+          <div class="row">
+            <button data-act="pulse">Pulse</button>
+            <button data-act="hold">Continuous</button>
+            <button data-act="stop">Stop</button>
+          </div>
+          <div class="row">
+            <button class="small" data-rp="thud">Thud</button>
+            <button class="small" data-rp="buzz">Buzz</button>
+            <button class="small" data-rp="heart">Heartbeat</button>
+            <button class="small" data-rp="sweep">Sweep</button>
+            <button class="small" data-rp="tick">Tick ×5</button>
+          </div>
+        </section>
+        <section class="panel wide">
+          <h3>Haptic scenes <span class="r muted" style="font-size:12px;text-transform:none">simulated sensations using both HD-rumble bands · many react to your movement</span></h3>
+          <div class="scenes">${SCENES.map(s => `<button class="scene-btn" data-scene="${s.id}"><span class="sn">${s.name}</span><span class="tag">${s.tag}</span><small>${s.desc}</small></button>`).join("")}</div>
+          <div class="hrow">
+            <canvas class="hviz" data-hviz width="900" height="240"></canvas>
+            <div class="hside">
+              <div class="hnow" data-k="hnow">No scene playing — pick one above.</div>
+              <div class="meter"><span>High band</span><div class="mt"><i data-k="mh"></i></div><span data-k="mhv">–</span></div>
+              <div class="meter"><span>Low band</span><div class="mt"><i data-k="ml" class="lo"></i></div><span data-k="mlv">–</span></div>
+              <label class="sl"><span>Intensity</span><input type="range" data-in="gain" min="20" max="150" value="100"><span data-k="gain">100%</span></label>
+              <button data-act="stopscene">Stop scene</button>
+            </div>
+          </div>
+        </section>
+        <section class="panel">
+          <h3>Player lights</h3>
+          <div class="leds">${[0,1,2,3].map(i => `<button class="led" data-led="${i}" title="LED ${i+1}"></button>`).join("")}</div>
+          <div class="row"><button class="small" data-act="flash">Flash mode: off</button><button class="small" data-act="chase">Chase test</button></div>
+          ${this.kind === "L" ? "" : `
+          <h3 style="margin-top:16px">Home button light</h3>
+          <div class="row" style="margin-top:0">${["off","on","breathe","pulse","blink","heartbeat"].map(m => `<button class="small" data-home="${m}">${m[0].toUpperCase() + m.slice(1)}</button>`).join("")}</div>
+          <label class="sl"><span>Brightness</span><input type="range" data-in="homelvl" min="1" max="15" value="15"><span data-k="homelvl">15</span></label>
+          <div class="muted" style="font-size:12px">Watch the ring around the Home button on the Joy-Con.</div>`}
+          <dl class="kv" style="margin-top:12px">
+            <dt>Type</dt><dd data-k="type">–</dd><dt>MAC</dt><dd data-k="mac">–</dd><dt>Body colour</dt><dd data-k="color">–</dd>
+            <dt>IMU calib</dt><dd data-k="imucal">–</dd><dt>Report ID</dt><dd data-k="rid">–</dd>
+          </dl>
+        </section>
+        ${this.kind !== "R" ? "" : `
+        <section class="panel wide">
+          <h3>IR motion camera <span class="r muted" style="font-size:12px;text-transform:none" data-k="irstatus">Off</span></h3>
+          <div class="irwrap">
+            <div class="irview">
+              <canvas class="ircanvas" data-ircanvas width="480" height="360"></canvas>
+              <div class="irhint" data-k="irhint">The camera is on the bottom end of the Joy-Con (R), next to the rail. Press Start, then hold your hand 5–30 cm in front of it.</div>
+            </div>
+            <div class="irside">
+              <div class="row" style="margin-top:0">
+                <select data-irin="res">${Object.keys(IR_RES).map(r => `<option ${r === "80x60" ? "selected" : ""}>${r}</option>`).join("")}</select>
+                <button class="primary small" data-act="irstart">Start camera</button>
+                <button class="small" data-act="irstop">Stop</button>
+              </div>
+              <div class="row">
+                <select data-irin="pal"><option value="iron">Heat (ironbow)</option><option value="grey">Greyscale</option><option value="night">Night vision</option></select>
+                <button class="small" data-act="irrot">Rotate 90°</button>
+                <button class="small" data-act="irsnap">Save PNG</button>
+              </div>
+              <label class="sl"><span>Exposure</span><input type="range" data-irin="exp" min="0" max="600" step="10" value="300"><span data-k="irexp">300 µs</span></label>
+              <label class="chk"><input type="checkbox" data-irin="auto" checked> Auto exposure</label>
+              <div class="row" style="font-size:12px">IR lights
+                <select data-irin="leds"><option value="0">Both groups</option><option value="32">Far / narrow only</option><option value="16">Near / wide only</option><option value="48">Off</option></select>
+              </div>
+              <label class="sl"><span>Far LEDs</span><input type="range" data-irin="far" min="0" max="15" value="15"><span data-k="irfar">15</span></label>
+              <label class="sl"><span>Near LEDs</span><input type="range" data-irin="near" min="0" max="16" value="16"><span data-k="irnear">16</span></label>
+              <label class="chk"><input type="checkbox" data-irin="exlf" checked> External light filter (sunlight / remotes)</label>
+              <label class="chk"><input type="checkbox" data-irin="denoise" checked> De-noise</label>
+              <label class="chk"><input type="checkbox" data-irin="flip"> Mirror image</label>
+              <dl class="kv" style="margin-top:10px">
+                <dt>Frames</dt><dd data-k="irfc">0</dd><dt>FPS</dt><dd data-k="irfps">–</dd>
+                <dt>Brightest spot</dt><dd data-k="irspot">–</dd><dt>White pixels</dt><dd data-k="irwhite">–</dd><dt>Ambient noise</dt><dd data-k="irnoise">–</dd>
+              </dl>
+              <div class="meter"><span>Proximity</span><div class="mt"><i data-k="irprox"></i></div><span data-k="irproxv">–</span></div>
+              <div class="meter"><span>Motion</span><div class="mt"><i data-k="irmot" class="lo"></i></div><span data-k="irmotv">–</span></div>
+              <div class="motlamp" data-k="irlamp">No motion</div>
+            </div>
+          </div>
+        </section>`}
+        <section class="panel">
+          <h3>Test checklist <span class="r" data-k="score">0 / 0</span></h3>
+          <div class="bar"><i data-k="scorebar"></i></div>
+          <ul class="checks" data-checks></ul>
+          <div class="row"><button class="small" data-act="resettests">Reset tests</button></div>
+        </section>
+        <section class="panel wide">
+          <h3>IMU live graph <span class="r muted" style="font-size:12px">top: gyro ±720 °/s · bottom: accel ±4 G · <span class="cx">X</span> <span class="cy">Y</span> <span class="cz">Z</span></span></h3>
+          <canvas class="graph" data-graph width="1400" height="520"></canvas>
+          <details style="margin-top:10px"><summary>Raw input report (hex)</summary><pre class="raw" data-k="raw">–</pre></details>
+        </section>
+      </div>`;
+    this.el = el;
+    const q = s => el.querySelector(s);
+    const k = {}; el.querySelectorAll("[data-k]").forEach(n => k[n.dataset.k] = n);
+    this.ui = {
+      status: q(".status"), k,
+      btnEls: Array.from(el.querySelectorAll("svg [data-btn]")),
+      chips: Object.fromEntries(Array.from(el.querySelectorAll("[data-chip]"), n => [n.dataset.chip, n])),
+      stickCanvas: Object.fromEntries(Array.from(el.querySelectorAll("[data-stick-c]"), n => [n.dataset.stickC, n])),
+      stickKnobs: Array.from(el.querySelectorAll("svg [data-stick]")),
+      model: q("[data-model]"), graph: q("[data-graph]"), checks: q("[data-checks]"),
+      details: q("details")
+    };
+    this.wireUI();
+    $("#devices").appendChild(el);
+  }
+
+  wireUI(){
+    const el = this.el, k = this.ui.k;
+    const val = n => +el.querySelector(`[data-in="${n}"]`).value;
+    const upd = () => {
+      k.freq.textContent = val("freq") + " Hz";
+      k.amp.textContent = (val("amp")/100).toFixed(2);
+      k.dur.textContent = val("dur") + " ms";
+      k.gain.textContent = val("gain") + "%";
+      this.hapticGain = val("gain") / 100;
+      if (k.homelvl){ k.homelvl.textContent = val("homelvl"); this.homeLevel = val("homelvl"); }
+    };
+    el.querySelectorAll("[data-in]").forEach(i => i.addEventListener("input", upd));
+    const hl = el.querySelector('[data-in="homelvl"]');
+    if (hl) hl.addEventListener("change", () => { if (this.homeMode === "on") this.setHome("on"); });
+    // IR camera live settings
+    const irIn = n => el.querySelector(`[data-irin="${n}"]`);
+    const irLive = ev => {
+      const n = ev.target.dataset.irin, c = this.irCfg, live = this.ir?.streaming;
+      if (n === "pal"){ this.irPal = ev.target.value; return; }
+      if (n === "exp"){ c.expUs = +ev.target.value; k.irexp.textContent = c.expUs + " µs";
+        if (ev.type === "change"){ c.auto = false; irIn("auto").checked = false; if (live){ const v = Math.round(c.expUs*31200/1000); this.irWriteRegs([[0x01,0x30,v & 0xFF],[0x01,0x31,v >> 8]]); } } }
+      if (n === "auto") c.auto = ev.target.checked;
+      if (n === "leds"){ c.leds = +ev.target.value; if (live) this.irWriteRegs([[0x00,0x10,c.leds]]); }
+      if (n === "far"){ c.far = +ev.target.value; k.irfar.textContent = c.far; if (live && ev.type === "change") this.irWriteRegs([[0x00,0x11,c.far]]); }
+      if (n === "near"){ c.near = +ev.target.value; k.irnear.textContent = c.near; if (live && ev.type === "change") this.irWriteRegs([[0x00,0x12,c.near]]); }
+      if (n === "exlf"){ c.exlf = ev.target.checked; if (live) this.irWriteRegs([[0x00,0x0E,c.exlf ? 0x03 : 0x00]]); }
+      if (n === "denoise"){ c.denoise = ev.target.checked; if (live) this.irWriteRegs([[0x01,0x67,c.denoise ? 1 : 0]]); }
+      if (n === "flip"){ c.flip = ev.target.checked ? 0x02 : 0x00; if (live) this.irWriteRegs([[0x00,0x2D,c.flip]]); }
+    };
+    el.querySelectorAll("[data-irin]").forEach(i => { i.addEventListener("input", irLive); i.addEventListener("change", irLive); });
+    const holdBtn = el.querySelector('[data-act="hold"]');
+    el.addEventListener("click", async ev => {
+      const b = ev.target.closest("button"); if (!b) return;
+      const act = b.dataset.act, rp = b.dataset.rp, led = b.dataset.led, scn = b.dataset.scene;
+      if (scn){
+        holdBtn.classList.remove("on");
+        if (this.scene?.sc.id === scn) this.stopRumble();
+        else this.startScene(SCENES.find(s => s.id === scn));
+        return;
+      }
+      if (act === "stopscene"){ this.stopRumble(); return; }
+      if (b.dataset.home){ this.setHome(b.dataset.home); return; }
+      if (act === "irstart"){ await this.irStop(true).catch(() => {}); this.irStart(el.querySelector('[data-irin="res"]').value); return; }
+      if (act === "irstop"){ this.irStop(); return; }
+      if (act === "irrot"){ this.irRot = (this.irRot + 90) % 360; return; }
+      if (act === "irsnap"){
+        const a = document.createElement("a");
+        a.download = "joycon-ir-" + Date.now() + ".png"; a.href = el.querySelector("[data-ircanvas]").toDataURL("image/png"); a.click();
+        return;
+      }
+      if (act === "disconnect") return removeDevice(this.device, true);
+      if (act === "pulse") this.play([{f:val("freq"), a:val("amp")/100, ms:val("dur")}]);
+      if (act === "hold"){
+        if (holdBtn.classList.toggle("on")){
+          const tok = ++this.rumbleToken; this.rumbleFired = true;
+          (async () => { while (tok === this.rumbleToken){ const e = encodeRumble(val("freq"), val("amp")/100); await this.sendRumble([...e, ...e]); await sleep(30); } })();
+        } else this.stopRumble();
+      }
+      if (act === "stop"){ holdBtn.classList.remove("on"); this.stopRumble(); }
+      if (rp){
+        holdBtn.classList.remove("on");
+        const P = {
+          thud: [{f:82, a:1, ms:160}],
+          buzz: [{f:320, a:0.8, ms:450}],
+          heart: [{f:130,a:1,ms:90},{f:0,a:0,ms:110},{f:130,a:0.7,ms:90},{f:0,a:0,ms:500},{f:130,a:1,ms:90},{f:0,a:0,ms:110},{f:130,a:0.7,ms:90}],
+          tick: Array.from({length:10}, (_,i) => i % 2 ? {f:0,a:0,ms:180} : {f:500,a:0.9,ms:30}),
+          sweep: Array.from({length:40}, (_,i) => ({f: 81 * Math.pow(626/81, i/39), a:0.75, ms:45}))
+        };
+        this.play(P[rp]);
+      }
+      if (led !== undefined){ this.leds ^= 1 << +led; this.setLeds().catch(()=>{}); }
+      if (act === "flash"){ this.ledFlash = this.ledFlash ? 0 : this.leds; b.textContent = "Flash mode: " + (this.ledFlash ? "on" : "off"); this.setLeds().catch(()=>{}); }
+      if (act === "chase"){
+        const prev = this.leds, pf = this.ledFlash; this.ledFlash = 0;
+        for (let r = 0; r < 2; r++) for (const m of [1,2,4,8,4,2]){ this.leds = m; await this.setLeds().catch(()=>{}); await sleep(110); }
+        this.leds = prev; this.ledFlash = pf; this.setLeds().catch(()=>{});
+      }
+      if (act === "calib") this.startCalib(false);
+      if (act === "reset3d") this.imu.q = [1,0,0,0];
+      if (act === "peak"){ this.imu.peakG = 0; this.imu.peakDps = 0; }
+      if (act === "stickreset"){ const s = this.sticks[b.dataset.side]; s.bins.fill(0); s.trail = []; }
+      if (act === "resettests"){
+        this.btnDone.clear(); this.btnCount = {}; this.rumbleFired = false;
+        this.imu.axisHit = [0,0,0]; this.imu.peakG = 0; this.imu.peakDps = 0;
+        for (const s of this.sides) this.sticks[s].bins.fill(0);
+      }
+    });
+  }
+
+  checks(){
+    const out = [];
+    out.push({name:"All buttons pressed", pass: this.btnDone.size === this.btnList.length, v: this.btnDone.size + " / " + this.btnList.length});
+    for (const s of this.sides){
+      const st = this.sticks[s];
+      const cov = st.bins.reduce((a,r) => a + (r > 0.85 ? 1 : 0), 0) / 36;
+      st.cov = cov;
+      out.push({name: (this.kind === "P" ? s + " stick" : "Stick") + " full range", pass: cov >= 0.9, v: Math.round(cov*100) + "%"});
+    }
+    const h = this.imu.axisHit;
+    out.push({name:"Gyro: rotate on all 3 axes", pass: h[0] && h[1] && h[2], v: ["X","Y","Z"].filter((_,i) => h[i]).join(" ") || "–"});
+    out.push({name:"Accelerometer: shake (>2 G)", pass: this.imu.peakG > 2, v: this.imu.peakG.toFixed(2) + " G"});
+    out.push({name:"Gravity reads ~1 G at rest", pass: this.imu.seen && Math.abs(Math.hypot(...this.imu.acc) - 1) < 0.12 && this.imu.peakG > 0, v: Math.hypot(...this.imu.acc).toFixed(2) + " G"});
+    out.push({name:"Rumble fired (feel it?)", pass: this.rumbleFired, v: this.rumbleFired ? "sent" : "–"});
+    if (this.kind !== "L") out.push({name:"Home button light set", pass: this.homeTested, v: this.homeTested ? this.homeMode : "–"});
+    if (this.kind === "R") out.push({name:"IR camera: frames received", pass: (this.ir?.fc || 0) >= 5, v: (this.ir?.fc || 0) + " frames"});
+    return out;
+  }
+
+  draw(now){
+    if (!this.alive) return;
+    const ui = this.ui, k = ui.k;
+    // buttons (every frame)
+    for (const n of ui.btnEls) n.classList.toggle("on", !!this.btnState[n.dataset.btn]);
+    for (const [id, c] of Object.entries(ui.chips)){ c.classList.toggle("on", !!this.btnState[id]); c.classList.toggle("done", this.btnDone.has(id)); }
+    for (const kn of ui.stickKnobs){
+      const n = this.sticks[kn.dataset.stick]?.n || [0,0];
+      kn.setAttribute("transform", `translate(${clamp(n[0],-1.2,1.2)*10} ${clamp(-n[1],-1.2,1.2)*10})`);
+    }
+    for (const s of this.sides) this.drawStick(ui.stickCanvas[s], this.sticks[s]);
+    this.drawModel();
+    this.drawGraph();
+    this.drawHaptics();
+    if (this.kind === "R") this.drawIR(now);
+    // text (10 Hz)
+    if (now - this._lastText < 100) return;
+    this._lastText = now;
+    this.el.querySelectorAll("[data-cnt]").forEach(n => n.textContent = (this.btnCount[n.dataset.cnt] || 0) + "×");
+    k.btncount.textContent = this.btnDone.size + " / " + this.btnList.length;
+    if (this.battery){
+      const L = ["Empty","Critical","Low","Medium","Full"][clamp(this.battery.lvl,0,4)];
+      k.bat.textContent = L + (this.battery.charging ? " ⚡" : "");
+    }
+    k.hz.textContent = Math.round(this.rate) + " Hz";
+    k.rid.textContent = "0x" + hex2(this.lastId) + (this.lastId === 0x30 ? " (full + IMU)" : this.lastId === 0x3F ? " (simple HID)" : "");
+    k.fw.textContent = this.info.fw || "–";
+    k.type.textContent = this.info.type || "–";
+    k.mac.textContent = this.info.mac || "–";
+    k.color.textContent = this.info.color || "–";
+    k.imucal.textContent = this.imu.calSrc;
+    this.el.querySelectorAll("[data-led]").forEach(n => n.classList.toggle("on", !!(this.leds & (1 << +n.dataset.led))));
+    for (const s of this.sides){
+      const st = this.sticks[s], r = Math.hypot(...st.n);
+      k["rx"+s].textContent = st.raw[0]; k["ry"+s].textContent = st.raw[1];
+      k["nx"+s].textContent = fmt(st.n[0]); k["ny"+s].textContent = fmt(st.n[1]);
+      k["r"+s].textContent = r.toFixed(2);
+      k["a"+s].textContent = r > 0.2 ? Math.round((Math.atan2(st.n[1], st.n[0]) * 180/Math.PI + 360) % 360) + "°" : "–";
+      k["cov"+s].textContent = Math.round((st.cov || 0) * 100) + "%";
+      k["dz"+s].textContent = st.dead ? st.dead + " (" + (st.dead / st.cal.xmax * 100).toFixed(0) + "%)" : "–";
+      k["cs"+s].textContent = st.cal.src;
+    }
+    const I = this.imu;
+    ["x","y","z"].forEach((a,i) => { k["g"+a].textContent = fmt(I.gyro[i], 1); k["a"+a].textContent = fmt(I.acc[i], 3); });
+    k.amag.textContent = Math.hypot(...I.acc).toFixed(3) + " G";
+    k.pk.textContent = I.peakG.toFixed(2) + " G · " + Math.round(I.peakDps) + " °/s";
+    k.imumsg.textContent = I.seen ? I.msg : "Waiting for IMU data…";
+    if (ui.details.open && this.raw) k.raw.textContent = "ID " + hex2(this.raw.id) + "  " + Array.from(this.raw.bytes, hex2).join(" ");
+    // checklist
+    const cs = this.checks(), passed = cs.filter(c => c.pass).length;
+    k.score.textContent = passed + " / " + cs.length;
+    k.scorebar.style.width = (passed / cs.length * 100) + "%";
+    ui.checks.innerHTML = cs.map(c => `<li class="${c.pass ? "pass" : ""}"><span class="ic"></span>${c.name}<span class="v">${c.v}</span></li>`).join("");
+  }
+
+  drawStick(cv, st){
+    if (!cv) return;
+    const ctx = cv.getContext("2d"), W = cv.width, c = W/2, R = W*0.4;
+    const css = getComputedStyle(this.el);
+    ctx.clearRect(0,0,W,W);
+    ctx.strokeStyle = css.getPropertyValue("--line"); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(c,8); ctx.lineTo(c,W-8); ctx.moveTo(8,c); ctx.lineTo(W-8,c); ctx.stroke();
+    ctx.beginPath(); ctx.arc(c,c,R,0,Math.PI*2); ctx.stroke();
+    if (st.dead){ ctx.setLineDash([6,6]); ctx.beginPath(); ctx.arc(c,c,R*st.dead/st.cal.xmax,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]); }
+    // reach outline
+    const acc = css.getPropertyValue("--accent").trim();
+    ctx.fillStyle = acc + "33"; ctx.strokeStyle = acc; ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i <= 36; i++){
+      const j = i % 36, a = (j + 0.5) / 36 * Math.PI*2 - Math.PI, r = st.bins[j] * R;
+      const x = c + Math.cos(a)*r, y = c - Math.sin(a)*r;
+      i ? ctx.lineTo(x,y) : ctx.moveTo(x,y);
+    }
+    ctx.fill(); ctx.stroke();
+    // trail
+    ctx.lineWidth = 3;
+    for (let i = 1; i < st.trail.length; i++){
+      const [x0,y0] = st.trail[i-1], [x1,y1] = st.trail[i];
+      ctx.strokeStyle = `rgba(160,170,190,${i/st.trail.length*0.8})`;
+      ctx.beginPath(); ctx.moveTo(c+x0*R, c-y0*R); ctx.lineTo(c+x1*R, c-y1*R); ctx.stroke();
+    }
+    const [nx, ny] = st.n;
+    ctx.fillStyle = "#fff"; ctx.strokeStyle = "#000"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(c+clamp(nx,-1.25,1.25)*R, c-clamp(ny,-1.25,1.25)*R, 11, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  }
+
+  drawHaptics(){
+    const ui = this.ui, k = ui.k;
+    if (!ui.hviz){ ui.hviz = this.el.querySelector("[data-hviz]"); ui.sceneBtns = Array.from(this.el.querySelectorAll("[data-scene]")); }
+    const cv = ui.hviz, g = cv.getContext("2d"), W = cv.width, H = cv.height, sc = this.scene;
+    for (const b of ui.sceneBtns) b.classList.toggle("on", sc?.sc.id === b.dataset.scene);
+    const o = sc ? this.hOut : null;
+    k.hnow.innerHTML = sc ? `<b>${sc.sc.name}</b> — ${sc.sc.desc}` : "No scene playing — pick one above.";
+    k.mh.style.width = (o ? o.ha*100 : 0) + "%"; k.ml.style.width = (o ? o.la*100 : 0) + "%";
+    k.mhv.textContent = o ? Math.round(o.hf) + " Hz" : "–"; k.mlv.textContent = o ? Math.round(o.lf) + " Hz" : "–";
+    g.clearRect(0, 0, W, H);
+    if (sc && sc.sc.draw){ sc.sc.draw(g, W, H, sc.s); return; }
+    const css = getComputedStyle(this.el), hist = this.hHist;
+    g.strokeStyle = css.getPropertyValue("--line"); g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(0, H-4); g.lineTo(W, H-4); g.stroke();
+    const cols = [css.getPropertyValue("--accent").trim(), css.getPropertyValue("--muted").trim()];
+    for (let band = 0; band < 2; band++){
+      g.strokeStyle = cols[band]; g.lineWidth = 3; g.beginPath();
+      for (let i = 0; i < hist.n; i++){
+        const v = sc ? hist.buf[((hist.head + i) % hist.n)*2 + band] : 0;
+        const x = i/(hist.n-1)*W, y = H - 4 - v*(H-44);
+        i ? g.lineTo(x, y) : g.moveTo(x, y);
+      }
+      g.stroke();
+    }
+    g.fillStyle = css.getPropertyValue("--muted"); g.font = "20px system-ui";
+    g.fillText("high band", 10, 24); g.fillStyle = cols[0]; g.fillRect(100, 14, 24, 4);
+    g.fillStyle = css.getPropertyValue("--muted"); g.fillText("low band", 140, 24); g.fillStyle = cols[1]; g.fillRect(222, 14, 24, 4);
+  }
+
+  drawIR(now){
+    const ui = this.ui, k = ui.k, ir = this.ir;
+    if (!ui.ircv){ ui.ircv = this.el.querySelector("[data-ircanvas]"); ui.iroff = document.createElement("canvas"); }
+    if (ir){
+      if (now - ir._t >= 1000){ ir.fps = ir._fc * 1000 / (now - ir._t); ir._fc = 0; ir._t = now; }
+      k.irstatus.textContent = ir.status + (ir.streaming ? ` · ${ir.w}×${ir.h}` : "");
+    }
+    if (!ir || !ir.newFrame) return;
+    ir.newFrame = false;
+    const {w, h, frame} = ir, lut = IR_PAL[this.irPal], off = ui.iroff;
+    if (off.width !== w || off.height !== h){ off.width = w; off.height = h; }
+    const octx = off.getContext("2d"), img = octx.createImageData(w, h), px = img.data;
+    let sum = 0, max = 0, diff = 0;
+    for (let i = 0; i < frame.length; i++){ const v = frame[i]; sum += v; if (v > max) max = v; }
+    const thr = Math.max(60, max * 0.85);
+    let cx = 0, cy = 0, cn = 0;
+    for (let i = 0; i < frame.length; i++){
+      const v = frame[i], j = i*4;
+      px[j] = lut[v*3]; px[j+1] = lut[v*3+1]; px[j+2] = lut[v*3+2]; px[j+3] = 255;
+      if (v >= thr){ cx += i % w; cy += (i / w) | 0; cn++; }
+      if (ir.prevFrame) diff += Math.abs(v - ir.prevFrame[i]);
+    }
+    octx.putImageData(img, 0, 0);
+    const mean = sum / frame.length;
+    ir.mean = mean;
+    ir.motion = ir.motion*0.6 + (ir.prevFrame ? diff / frame.length / 255 * 100 : 0) * 0.4;
+    ir.spot = cn ? [cx/cn, cy/cn, max] : null;
+    // draw scaled + rotated
+    const cv = ui.ircv, rot = this.irRot, side = rot % 180 !== 0;
+    const DW = side ? 360 : 480, DH = side ? 480 : 360;
+    if (cv.width !== DW || cv.height !== DH){ cv.width = DW; cv.height = DH; }
+    const g = cv.getContext("2d"), s = 480 / w;
+    g.save(); g.clearRect(0, 0, DW, DH);
+    if (rot === 90){ g.translate(DW, 0); g.rotate(Math.PI/2); }
+    else if (rot === 180){ g.translate(DW, DH); g.rotate(Math.PI); }
+    else if (rot === 270){ g.translate(0, DH); g.rotate(-Math.PI/2); }
+    g.imageSmoothingEnabled = w >= 160;
+    g.drawImage(off, 0, 0, w*s, h*s);
+    if (ir.spot && max > 40){
+      const [sx, sy] = ir.spot, X = (sx + 0.5)*s, Y = (sy + 0.5)*s;
+      g.strokeStyle = "#00e5ff"; g.lineWidth = 2;
+      g.beginPath(); g.arc(X, Y, 16, 0, Math.PI*2); g.moveTo(X-26, Y); g.lineTo(X+26, Y); g.moveTo(X, Y-26); g.lineTo(X, Y+26); g.stroke();
+    }
+    g.restore();
+    // stats
+    k.irhint.hidden = true;
+    k.irfc.textContent = ir.fc;
+    k.irfps.textContent = ir.fps ? ir.fps.toFixed(1) : "–";
+    k.irspot.textContent = ir.spot ? `x ${ir.spot[0].toFixed(0)}, y ${ir.spot[1].toFixed(0)} (${max})` : "–";
+    k.irwhite.textContent = ir.stats.white ?? "–";
+    k.irnoise.textContent = ir.stats.noise ?? "–";
+    k.irexp.textContent = this.irCfg.expUs + " µs"; if (this.irCfg.auto) this.el.querySelector('[data-irin="exp"]').value = this.irCfg.expUs;
+    const prox = clamp(mean / 160, 0, 1);
+    k.irprox.style.width = prox*100 + "%"; k.irproxv.textContent = Math.round(prox*100) + "%";
+    k.irmot.style.width = clamp(ir.motion / 10, 0, 1)*100 + "%"; k.irmotv.textContent = ir.motion.toFixed(1) + "%";
+    const moving = ir.motion > 1.5;
+    k.irlamp.classList.toggle("on", moving); k.irlamp.textContent = moving ? "Motion detected" : "No motion";
+  }
+
+  drawModel(){
+    const [w,x,y,z] = this.imu.q;
+    const R00=1-2*(y*y+z*z), R01=2*(x*y-w*z), R02=2*(x*z+w*y);
+    const R10=2*(x*y+w*z), R11=1-2*(x*x+z*z), R12=2*(y*z-w*x);
+    const R20=2*(x*z-w*y), R21=2*(y*z+w*x), R22=1-2*(x*x+y*y);
+    // map device/world frame (x=top, y=left, z=out of face) onto CSS (x right, y down, z toward viewer)
+    const M = [R11, R01, -R21, 0,  R10, R00, -R20, 0,  -R12, -R02, R22, 0,  0,0,0,1];
+    this.ui.model.style.transform = "rotateX(28deg) matrix3d(" + M.map(v => v.toFixed(5)).join(",") + ")";
+  }
+
+  drawGraph(){
+    const cv = this.ui.graph, ctx = cv.getContext("2d"), W = cv.width, H = cv.height, G = this.G;
+    const css = getComputedStyle(this.el);
+    ctx.clearRect(0,0,W,H);
+    const half = H/2, cols = [css.getPropertyValue("--x"), css.getPropertyValue("--y"), css.getPropertyValue("--z")];
+    ctx.strokeStyle = css.getPropertyValue("--line"); ctx.lineWidth = 1.5;
+    for (const yy of [half/2, half + half/2]){ ctx.beginPath(); ctx.moveTo(0,yy); ctx.lineTo(W,yy); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(0,half); ctx.lineTo(W,half); ctx.stroke();
+    ctx.fillStyle = css.getPropertyValue("--muted"); ctx.font = "22px system-ui";
+    ctx.fillText("gyro", 10, 26); ctx.fillText("accel", 10, half + 26);
+    for (let plot = 0; plot < 2; plot++){
+      const scale = plot ? 4 : 720, y0 = plot*half + half/2;
+      for (let ax = 0; ax < 3; ax++){
+        ctx.strokeStyle = cols[ax]; ctx.lineWidth = 2.5; ctx.beginPath();
+        for (let i = 0; i < G.n; i++){
+          const idx = ((G.head + i) % G.n) * 6 + plot*3 + ax;
+          const yv = y0 - clamp(G.buf[idx] / scale, -1, 1) * (half/2 - 6);
+          const xv = i / (G.n - 1) * W;
+          i ? ctx.lineTo(xv, yv) : ctx.moveTo(xv, yv);
+        }
+        ctx.stroke();
+      }
+    }
+  }
+
+  destroy(){
+    this.alive = false; this.rumbleToken++;
+    if (this.ir) { this.ir.on = false; this.ir.streaming = false; }
+    try { this.device.removeEventListener("inputreport", this.onReport); } catch(e){}
+    this.el.remove();
+  }
+}
+
+/* ---------- SVG drawings ---------- */
+function svgL(face=false){
+  return `<svg class="jc" viewBox="${face ? "20 20 120 320" : "0 0 160 360"}" ${face ? 'preserveAspectRatio="none"' : ""}>
+    ${face ? "" : `<rect data-btn="zl" class="b" x="30" y="1" width="60" height="11" rx="5"/><text x="60" y="6.5" style="font-size:8px">ZL</text>
+    <path data-btn="l" class="b bs" d="M16,80 A64,64 0 0 1 80,16"/>`}
+    <path class="body" d="M140,20 L80,20 A60,60 0 0 0 20,80 L20,280 A60,60 0 0 0 80,340 L140,340 Z"/>
+    ${face ? "" : `<rect class="rail" x="140" y="30" width="11" height="300" rx="3"/>
+    <rect data-btn="sll" class="b" x="141" y="62" width="10" height="46" rx="4"/><text x="146" y="85" style="font-size:7px">SL</text>
+    <rect data-btn="srl" class="b" x="141" y="252" width="10" height="46" rx="4"/><text x="146" y="275" style="font-size:7px">SR</text>`}
+    <rect data-btn="minus" class="b" x="108" y="40" width="18" height="6" rx="2"/>
+    <circle class="well" cx="80" cy="110" r="28"/>
+    <circle data-btn="lstick" data-stick="L" class="b" cx="80" cy="110" r="18"/>
+    <circle data-btn="up" class="b" cx="80" cy="186" r="11"/><text x="80" y="186">▲</text>
+    <circle data-btn="down" class="b" cx="80" cy="234" r="11"/><text x="80" y="234">▼</text>
+    <circle data-btn="left" class="b" cx="56" cy="210" r="11"/><text x="56" y="210">◀</text>
+    <circle data-btn="right" class="b" cx="104" cy="210" r="11"/><text x="104" y="210">▶</text>
+    <rect data-btn="capture" class="b" x="98" y="270" width="14" height="14" rx="3"/>
+  </svg>`;
+}
+function svgR(face=false){
+  return `<svg class="jc" viewBox="${face ? "20 20 120 320" : "0 0 160 360"}" ${face ? 'preserveAspectRatio="none"' : ""}>
+    ${face ? "" : `<rect data-btn="zr" class="b" x="70" y="1" width="60" height="11" rx="5"/><text x="100" y="6.5" style="font-size:8px">ZR</text>
+    <path data-btn="r" class="b bs" d="M80,16 A64,64 0 0 1 144,80"/>`}
+    <path class="body" d="M20,20 L80,20 A60,60 0 0 1 140,80 L140,280 A60,60 0 0 1 80,340 L20,340 Z"/>
+    ${face ? "" : `<rect class="rail" x="9" y="30" width="11" height="300" rx="3"/>
+    <rect data-btn="srr" class="b" x="9" y="62" width="10" height="46" rx="4"/><text x="14" y="85" style="font-size:7px">SR</text>
+    <rect data-btn="slr" class="b" x="9" y="252" width="10" height="46" rx="4"/><text x="14" y="275" style="font-size:7px">SL</text>`}
+    <g data-btn="plus" class="b"><rect x="35" y="40" width="18" height="6" rx="1.5"/><rect x="41" y="34" width="6" height="18" rx="1.5"/></g>
+    <circle data-btn="x" class="b" cx="80" cy="86" r="11"/><text x="80" y="86">X</text>
+    <circle data-btn="b" class="b" cx="80" cy="134" r="11"/><text x="80" y="134">B</text>
+    <circle data-btn="y" class="b" cx="56" cy="110" r="11"/><text x="56" y="110">Y</text>
+    <circle data-btn="a" class="b" cx="104" cy="110" r="11"/><text x="104" y="110">A</text>
+    <circle class="well" cx="80" cy="214" r="28"/>
+    <circle data-btn="rstick" data-stick="R" class="b" cx="80" cy="214" r="18"/>
+    <circle class="homeglow" cx="58" cy="276" r="12"/>
+    <circle data-btn="home" class="b" cx="58" cy="276" r="8"/>
+  </svg>`;
+}
+
+/* ---------- device management ---------- */
+async function addDevice(device){
+  if (device.vendorId !== NINTENDO || !NAMES[device.productId]) return;
+  if (devices.has(device)) return;
+  const jc = new JoyCon(device, devices.size);
+  devices.set(device, jc);
+  $("#howto").hidden = true;
+  try { await jc.init(); }
+  catch (e){ console.error(e); jc.setStatus("Error: " + e.message); }
+}
+async function removeDevice(device, close){
+  const jc = devices.get(device); if (!jc) return;
+  devices.delete(device);
+  jc.destroy();
+  if (close){ try { await jc.sendRumble(NEUTRAL); await device.close(); } catch(e){} }
+  if (!devices.size) $("#howto").hidden = false;
+}
+
+function loop(now){
+  for (const jc of devices.values()) jc.draw(now);
+  if ($("#gpsec").open) drawGamepads();
+  requestAnimationFrame(loop);
+}
+
+/* ---------- Gamepad API fallback ---------- */
+function drawGamepads(){
+  const pads = Array.from(navigator.getGamepads ? navigator.getGamepads() : []).filter(Boolean);
+  const box = $("#gplist");
+  if (!pads.length){ if (!box.dataset.empty){ box.innerHTML = '<div class="muted">No gamepads seen yet. Press a button on the controller.</div>'; box.dataset.empty = 1; } return; }
+  delete box.dataset.empty;
+  box.innerHTML = pads.map(p => `<div class="gpcard"><b>${p.index}: ${p.id.replace(/</g,"&lt;")}</b> <span class="muted">(${p.mapping || "non-standard"} mapping)</span>
+    <div class="chips" style="margin:8px 0">${p.buttons.map((b,i) => `<div class="chip ${b.pressed ? "on" : ""}">B${i}<small>${b.value.toFixed(2)}</small></div>`).join("")}</div>
+    ${p.axes.map((a,i) => `<div class="axbar"><span>Axis ${i}</span><div class="t"><i style="left:calc(${(a+1)*50}% - 2px)"></i></div><span>${fmt(a)}</span></div>`).join("")}</div>`).join("");
+}
+
+/* ---------- boot ---------- */
+if (!("hid" in navigator)){
+  $("#unsupported").hidden = false;
+  $("#connect").disabled = true;
+  $("#gpsec").open = true;
+} else {
+  $("#connect").addEventListener("click", async () => {
+    try {
+      const picked = await navigator.hid.requestDevice({filters: Object.keys(NAMES).map(p => ({vendorId: NINTENDO, productId: +p}))});
+      for (const d of picked) addDevice(d);
+    } catch (e){ console.warn(e); alert("Couldn't open the device chooser: " + e.message); }
+  });
+  navigator.hid.addEventListener("connect", e => addDevice(e.device));
+  navigator.hid.addEventListener("disconnect", e => removeDevice(e.device, false));
+  navigator.hid.getDevices().then(ds => ds.forEach(addDevice));
+}
+requestAnimationFrame(loop);
+</script>
+<script>
+"use strict";
+/* ================= Phone sensors (Web APIs) ================= */
+const PH = {
+  on:false, acc:[0,0,0], lin:null, rot:[0,0,0], ori:{a:null, b:null, g:null}, heading:null, hsrc:"–",
+  mN:0, _mN:0, mRate:0, _mt:performance.now(), G:{n:400, buf:new Float32Array(2400), head:0},
+  peak:0, shakes:0, shakeArm:true, tests:{}, pointers:new Map(), trails:[], maxTouch:0, pmax:"–",
+  gpsWatch:null, gps:null, gpsT:0, gpsN:0, mic:null, cam:null, audio:null, tone:null, wake:null,
+  sensors:{}, fps:0, _f:0, _ft:performance.now(), rotations:0, battery:null, _txt:0, vis:false
+};
+const PEL = {};
+const P = k => PEL[k] || (PEL[k] = document.querySelector(`[data-p="${k}"]`));
+const phPass = k => { PH.tests[k] = true; };
+const G0 = 9.80665;
+
+/* ----- motion & orientation ----- */
+function phMotion(e){
+  const g = e.accelerationIncludingGravity, a = e.acceleration, r = e.rotationRate;
+  phApplyMotion(g && g.x != null ? [g.x, g.y, g.z] : null, a && a.x != null ? [a.x, a.y, a.z] : null,
+                r && (r.alpha != null || r.beta != null) ? [r.beta || 0, r.gamma || 0, r.alpha || 0] : null);
+}
+// Shared by local sensors and the remote phone link.
+function phApplyMotion(acc, lin, rot){
+  if (acc) PH.acc = acc;
+  if (lin) PH.lin = lin;
+  if (rot) PH.rot = rot;
+  PH.mN++; PH._mN++; phPass("motion");
+  const mag = Math.hypot(...PH.acc) / G0;
+  if (mag > PH.peak) PH.peak = mag;
+  if (mag > 2 && PH.shakeArm){ PH.shakes++; PH.shakeArm = false; } else if (mag < 1.3) PH.shakeArm = true;
+  if (PH.shakes >= 3) phPass("shake");
+  if (Math.max(...PH.rot.map(Math.abs)) > 90) phPass("gyro");
+  const G = PH.G, p = G.head * 6;
+  G.buf.set([PH.rot[0], PH.rot[1], PH.rot[2], PH.acc[0]/G0, PH.acc[1]/G0, PH.acc[2]/G0], p);
+  G.head = (G.head + 1) % G.n;
+}
+function phApplyOri(a, b, g, heading, hsrc){
+  if (a == null && b == null) return;
+  PH.ori = {a, b, g}; phPass("orient");
+  if (heading != null){ PH.heading = heading; PH.hsrc = hsrc || "phone"; phPass("compass"); }
+}
+function phOri(e){
+  if (e.alpha == null && e.beta == null) return;
+  PH.ori = {a:e.alpha, b:e.beta, g:e.gamma}; phPass("orient");
+  if (e.webkitCompassHeading != null){ PH.heading = e.webkitCompassHeading; PH.hsrc = "iOS compass"; phPass("compass"); }
+  else if (e.absolute && e.alpha != null){ PH.heading = (360 - e.alpha) % 360; PH.hsrc = "absolute orientation"; phPass("compass"); }
+}
+function phOriAbs(e){
+  if (e.alpha == null) return;
+  PH.heading = (360 - e.alpha) % 360; PH.hsrc = "absolute orientation"; phPass("compass");
+}
+async function phStart(){
+  const msg = P("perm");
+  try {
+    if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function"){
+      const r = await DeviceMotionEvent.requestPermission();
+      if (r !== "granted"){ msg.textContent = "Motion permission denied. On iPhone: Settings › Apps › Safari › Motion & Orientation Access, then reload."; return; }
+    }
+    if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function")
+      await DeviceOrientationEvent.requestPermission().catch(() => {});
+  } catch (e){ msg.textContent = "Permission error: " + e.message; }
+  if (!PH.on){
+    addEventListener("devicemotion", phMotion);
+    addEventListener("deviceorientation", phOri);
+    addEventListener("deviceorientationabsolute", phOriAbs);
+    PH.on = true;
+  }
+  $("#ph-start").textContent = "Motion sensors on";
+  msg.textContent = "Listening — move the phone around.";
+  phProbeSensors();
+  setTimeout(() => { if (!PH.mN) msg.textContent = "No motion data yet. This device may have no motion sensors (most laptops), or the page isn't on HTTPS."; }, 2500);
+}
+
+/* ----- Generic Sensor API ----- */
+const PH_SENSORS = [["Accelerometer","m/s²"],["LinearAccelerationSensor","m/s²"],["GravitySensor","m/s²"],["Gyroscope","rad/s"],
+                    ["Magnetometer","µT"],["AbsoluteOrientationSensor",""],["RelativeOrientationSensor",""],["AmbientLightSensor","lux"]];
+function phProbeSensors(){
+  for (const [name, unit] of PH_SENSORS){
+    if (PH.sensors[name]?.obj) continue;
+    const st = PH.sensors[name] = {status:"not in this browser", val:"–"};
+    if (!(name in window)) continue;
+    try {
+      const s = new window[name]({frequency: 20});
+      st.status = "starting…"; st.obj = s;
+      s.addEventListener("reading", () => {
+        st.status = "working";
+        if (name === "AmbientLightSensor"){ st.val = s.illuminance.toFixed(0) + " lux"; phPass("light"); }
+        else if (s.quaternion) st.val = s.quaternion.map(v => v.toFixed(2)).join(" ");
+        else { st.val = [s.x, s.y, s.z].map(v => v.toFixed(2)).join(" ") + " " + unit; if (name === "Magnetometer"){ phPass("mag"); st.val += " · |B| " + Math.hypot(s.x,s.y,s.z).toFixed(0); } }
+      });
+      s.addEventListener("error", ev => {
+        const n = ev.error?.name;
+        st.status = n === "NotAllowedError" ? "permission denied" : n === "NotReadableError" ? "not on this device" : (n || "error");
+      });
+      s.start();
+    } catch (e){ st.status = e.name === "SecurityError" ? "blocked (HTTPS / policy)" : "error: " + e.name; }
+  }
+}
+
+/* ----- touch ----- */
+function phTouchSetup(cv = P("touch"), onChange){
+  const set = e => {
+    const r = cv.getBoundingClientRect(), sx = cv.width / r.width, sy = cv.height / r.height;
+    const pt = {x:(e.clientX - r.left)*sx, y:(e.clientY - r.top)*sy, p:e.pressure, w:(e.width||0)*sx, h:(e.height||0)*sy, type:e.pointerType};
+    PH.pointers.set(e.pointerId, pt);
+    PH.trails.push({x:pt.x, y:pt.y, id:e.pointerId, t:performance.now()});
+    if (PH.trails.length > 400) PH.trails.shift();
+    PH.maxTouch = Math.max(PH.maxTouch, PH.pointers.size);
+    if (PH.pointers.size >= 2) phPass("touch");
+    PH.pmax = `${(pt.p || 0).toFixed(2)} · ${Math.round(e.width||0)}×${Math.round(e.height||0)} px · ${pt.type}`;
+    onChange?.(cv);
+  };
+  cv.addEventListener("pointerdown", e => { e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch(_){} set(e); });
+  cv.addEventListener("pointermove", e => { if (PH.pointers.has(e.pointerId)) set(e); });
+  const up = e => { PH.pointers.delete(e.pointerId); onChange?.(cv); };
+  cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up); cv.addEventListener("lostpointercapture", up);
+}
+
+/* ----- vibration ----- */
+const PH_VIB = {
+  tap:[30], double:[40,80,40], long:[800], heart:[80,120,80,600,80,120,80,600,80,120,80],
+  sos:[100,100,100,100,100,300,300,100,300,100,300,300,100,100,100,100,100],
+  ramp:[20,200,40,180,60,160,90,140,120,120,160,100,220,80,300]
+};
+function phVibrate(kind, ms){
+  const msg = P("vibmsg");
+  if (LINK.role === "host" && LINK.open){ linkSend({t:"vib", k:kind, ms: +document.querySelector('[data-pin="vibms"]').value}); msg.textContent = "Sent to phone…"; return; }
+  if (!("vibrate" in navigator)){ msg.textContent = "Vibration API not supported here (iPhone Safari has no web vibration)."; return; }
+  const pat = kind === "stop" ? 0 : kind === "custom" ? [ms || +document.querySelector('[data-pin="vibms"]').value] : PH_VIB[kind];
+  const ok = navigator.vibrate(pat);
+  msg.textContent = kind === "stop" ? "Stopped." : ok ? "Vibrating… feel it?" : "The browser refused (tap the page first, and check silent/battery-saver mode).";
+  if (ok && kind !== "stop"){ phPass("vibrate"); if (LINK.role === "phone") linkSend({t:"ev", k:"vibrate", ok:true}); }
+  else if (LINK.role === "phone" && kind !== "stop") linkSend({t:"ev", k:"vibrate", ok:false, why: "vibrate" in navigator ? "refused" : "unsupported"});
+}
+
+/* ----- speaker ----- */
+const phAC = () => PH.audio || (PH.audio = new (window.AudioContext || window.webkitAudioContext)());
+function phToneStop(){ if (PH.tone){ try { PH.tone.o.stop(); } catch(_){} PH.tone = null; } }
+function phTone(mode, opts){
+  const val = n => opts ? opts[n] : document.querySelector(`[data-pin="${n}"]`).value;
+  if (LINK.role === "host" && LINK.open && !opts){ linkSend({t:"tone", mode, freq:val("freq"), vol:val("vol"), wave:val("wave")}); if (mode !== "stop") phPass("speaker"); return; }
+  phToneStop();
+  if (mode === "stop") return;
+  const ac = phAC(); ac.resume();
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = val("wave"); o.frequency.value = +val("freq"); g.gain.value = (+val("vol") / 100) ** 2;
+  o.connect(g);
+  if (ac.createStereoPanner && mode !== "sweep"){ const p = ac.createStereoPanner(); p.pan.value = +mode; g.connect(p).connect(ac.destination); }
+  else g.connect(ac.destination);
+  if (mode === "sweep"){
+    o.frequency.setValueAtTime(40, ac.currentTime);
+    o.frequency.exponentialRampToValueAtTime(16000, ac.currentTime + 8);
+    o.stop(ac.currentTime + 8);
+  }
+  o.start();
+  PH.tone = {o, g, sweep: mode === "sweep"};
+  o.onended = () => { if (PH.tone?.o === o) PH.tone = null; };
+  phPass("speaker");
+  if (LINK.role === "phone") linkSend({t:"ev", k:"speaker"});
+}
+
+/* ----- microphone ----- */
+async function phMic(){
+  const btn = document.querySelector('[data-pact="mic"]'), msg = P("micmsg");
+  if (PH.mic){ PH.mic.s.getTracks().forEach(t => t.stop()); PH.mic = null; btn.textContent = "Start mic"; return; }
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:false}});
+    const ac = phAC(); await ac.resume();
+    const an = ac.createAnalyser(); an.fftSize = 2048; an.smoothingTimeConstant = 0.6;
+    ac.createMediaStreamSource(s).connect(an);
+    PH.mic = {s, an, buf:new Float32Array(an.fftSize), fb:new Uint8Array(an.frequencyBinCount), peak:-100, db:-100, pitch:0, bars:new Array(96).fill(0)};
+    btn.textContent = "Stop mic"; msg.textContent = "Speak, clap or whistle.";
+    P("micsr").textContent = ac.sampleRate + " Hz";
+  } catch (e){ msg.textContent = "Microphone unavailable: " + e.message; }
+}
+
+/* ----- camera ----- */
+async function phCam(cmd){
+  const msg = P("cammsg"), video = P("video"), torchBtn = document.querySelector('[data-cam="torch"]');
+  if (cmd === "torch"){
+    if (!PH.cam) return;
+    try { PH.cam.torch = !PH.cam.torch; await PH.cam.t.applyConstraints({advanced:[{torch: PH.cam.torch}]}); torchBtn.classList.toggle("on", PH.cam.torch); }
+    catch (e){ msg.textContent = "Flashlight control failed: " + e.message; }
+    return;
+  }
+  if (PH.cam){ PH.cam.s.getTracks().forEach(t => t.stop()); PH.cam = null; video.srcObject = null; torchBtn.hidden = true; }
+  if (cmd === "stop"){ msg.textContent = ""; return; }
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({video:{facingMode:cmd, width:{ideal:1920}, height:{ideal:1080}}, audio:false});
+    video.srcObject = s; await video.play();
+    const t = s.getVideoTracks()[0], set = t.getSettings ? t.getSettings() : {}, caps = t.getCapabilities ? t.getCapabilities() : {};
+    PH.cam = {s, t, torch:false};
+    torchBtn.hidden = !caps.torch;
+    msg.textContent = `${t.label || cmd} · ${set.width || "?"}×${set.height || "?"} @ ${set.frameRate ? Math.round(set.frameRate) : "?"} fps` + (caps.torch ? " · flashlight available" : "");
+    phPass("camera");
+  } catch (e){ msg.textContent = "Camera unavailable: " + e.message; }
+}
+
+/* ----- GPS ----- */
+function phGps(){
+  const btn = document.querySelector('[data-pact="gps"]'), msg = P("gpsmsg");
+  if (PH.gpsWatch != null){ navigator.geolocation.clearWatch(PH.gpsWatch); PH.gpsWatch = null; btn.textContent = "Start GPS"; return; }
+  if (!navigator.geolocation){ msg.textContent = "Geolocation not supported."; return; }
+  msg.textContent = "Waiting for a fix…";
+  PH.gpsWatch = navigator.geolocation.watchPosition(
+    p => { PH.gps = p.coords; PH.gpsT = p.timestamp; PH.gpsN++; phPass("gps"); msg.textContent = p.coords.accuracy < 20 ? "Good fix." : "Fix received — accuracy improves outdoors."; },
+    e => { msg.textContent = "Location error: " + e.message; },
+    {enableHighAccuracy:true, maximumAge:0, timeout:30000});
+  btn.textContent = "Stop GPS";
+}
+
+/* ----- screen & device ----- */
+async function phWake(){
+  const btn = document.querySelector('[data-pact="wake"]');
+  if (PH.wake){ await PH.wake.release().catch(() => {}); PH.wake = null; btn.classList.remove("on"); return; }
+  try { PH.wake = await navigator.wakeLock.request("screen"); btn.classList.add("on"); PH.wake.addEventListener("release", () => { PH.wake = null; btn.classList.remove("on"); }); }
+  catch (e){ btn.textContent = "Wake lock unavailable"; }
+}
+function phInfo(){
+  const rows = LINK.info || phInfoRows();
+  P("info").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+}
+function phInfoRows(){
+  const c = navigator.connection, o = screen.orientation, mm = q => matchMedia(q).matches;
+  const rows = [
+    ["Screen (CSS px)", `${screen.width} × ${screen.height}`],
+    ["Viewport", `${innerWidth} × ${innerHeight}`],
+    ["Pixel ratio", devicePixelRatio + "×  (" + Math.round(screen.width*devicePixelRatio) + " × " + Math.round(screen.height*devicePixelRatio) + " physical)"],
+    ["Refresh rate", PH.fps ? "≈ " + Math.round(PH.fps) + " Hz" : "measuring…"],
+    ["Orientation", o ? `${o.type} (${o.angle}°)` : (window.orientation ?? "–") + "°"],
+    ["Rotations seen", PH.rotations],
+    ["Colour gamut", mm("(color-gamut: rec2020)") ? "Rec.2020" : mm("(color-gamut: p3)") ? "Display P3" : "sRGB"],
+    ["HDR", mm("(dynamic-range: high)") ? "yes" : "no"],
+    ["Dark mode", mm("(prefers-color-scheme: dark)") ? "on" : "off"],
+    ["Touch points", navigator.maxTouchPoints ?? "–"],
+    ["CPU cores", navigator.hardwareConcurrency ?? "–"],
+    ["Memory", navigator.deviceMemory ? "≥ " + navigator.deviceMemory + " GB" : "hidden"],
+    ["Network", c ? `${c.effectiveType || "?"} · ${c.downlink ?? "?"} Mb/s · ${c.rtt ?? "?"} ms` : (navigator.onLine ? "online" : "offline")],
+    ["Battery", PH.battery ? `${Math.round(PH.battery.level*100)}%${PH.battery.charging ? " · charging" : ""}` : "not exposed"],
+    ["Secure context", isSecureContext ? "yes" : "NO — sensors blocked"]
+  ];
+  return rows;
+}
+
+/* ----- checklist ----- */
+function phChecks(){
+  const T = PH.tests;
+  return [
+    ["Motion sensor data", T.motion, PH.mN + " events"],
+    ["Gyroscope: rotate fast (>90°/s)", T.gyro, ""],
+    ["Shake 3 times (>2 G)", T.shake, PH.shakes + " / 3"],
+    ["Orientation (tilt angles)", T.orient, ""],
+    ["Compass heading", T.compass, PH.heading != null ? Math.round(PH.heading) + "°" : "–"],
+    ["Multi-touch (2+ fingers)", T.touch, "max " + PH.maxTouch],
+    ["Vibration motor", T.vibrate, ""],
+    ["Speaker tone", T.speaker, ""],
+    ["Microphone hears sound", T.mic, (PH.mic || LINK.mic) ? (PH.mic || LINK.mic).peak.toFixed(0) + " dB peak" : ""],
+    ["Camera opens", T.camera, ""],
+    ["GPS fix", T.gps, PH.gpsN + " fixes"],
+    ["Screen rotation", T.rotate, PH.rotations + "×"]
+  ];
+}
+
+/* ----- drawing ----- */
+function phDraw(now){
+  PH._f++;
+  if (now - PH._ft >= 1000){ PH.fps = PH._f * 1000 / (now - PH._ft); PH._f = 0; PH._ft = now; PH.mRate = PH._mN; PH._mN = 0; }
+  const css = getComputedStyle(document.documentElement), col = n => css.getPropertyValue(n).trim();
+  const {a, b, g} = PH.ori;
+  // 3D phone
+  P("model").style.transform = `rotateX(35deg) rotateZ(${-(a || 0)}deg) rotateX(${b || 0}deg) rotateY(${-(g || 0)}deg)`;
+  // bubble level
+  { const cv = P("level"), c = cv.getContext("2d"), W = cv.width, m = W/2, R = W*0.42;
+    c.clearRect(0,0,W,W);
+    c.strokeStyle = col("--line"); c.lineWidth = 2;
+    c.beginPath(); c.arc(m,m,R,0,Math.PI*2); c.stroke(); c.beginPath(); c.arc(m,m,R*0.15,0,Math.PI*2); c.stroke();
+    c.beginPath(); c.moveTo(m-R,m); c.lineTo(m+R,m); c.moveTo(m,m-R); c.lineTo(m,m+R); c.stroke();
+    const bx = clamp((g || 0)/45, -1, 1), by = clamp((b || 0)/45, -1, 1);
+    const level = Math.abs(b || 0) < 1 && Math.abs(g || 0) < 1 && b != null;
+    if (level) phPass("level");
+    c.fillStyle = level ? "#3ddc84" : "#c8ff4d";
+    c.beginPath(); c.arc(m + bx*R*0.85, m + by*R*0.85, R*0.13, 0, Math.PI*2); c.fill(); }
+  // compass
+  { const cv = P("compass"), c = cv.getContext("2d"), W = cv.width, m = W/2, R = W*0.42, h = PH.heading;
+    c.clearRect(0,0,W,W);
+    c.save(); c.translate(m,m); c.rotate(-(h || 0) * Math.PI/180);
+    c.strokeStyle = col("--line"); c.lineWidth = 2; c.beginPath(); c.arc(0,0,R,0,Math.PI*2); c.stroke();
+    c.fillStyle = col("--muted"); c.font = "bold 26px system-ui"; c.textAlign = "center"; c.textBaseline = "middle";
+    for (let d = 0; d < 360; d += 15){
+      const r0 = d % 90 ? R*0.92 : R*0.84, an = d*Math.PI/180;
+      c.beginPath(); c.moveTo(Math.sin(an)*r0, -Math.cos(an)*r0); c.lineTo(Math.sin(an)*R, -Math.cos(an)*R); c.stroke();
+    }
+    [["N",0,"#ff5a5a"],["E",90],["S",180],["W",270]].forEach(([t,d,cl]) => { const an = d*Math.PI/180; c.fillStyle = cl || col("--text"); c.fillText(t, Math.sin(an)*R*0.68, -Math.cos(an)*R*0.68); });
+    c.restore();
+    c.fillStyle = "#8b6cff"; c.beginPath(); c.moveTo(m, m-R-6); c.lineTo(m-12, m-R+18); c.lineTo(m+12, m-R+18); c.fill();
+    c.fillStyle = col("--text"); c.font = "bold 40px system-ui"; c.textAlign = "center"; c.textBaseline = "middle";
+    c.fillText(h != null ? Math.round(h) + "°" : "–", m, m); }
+  // graph
+  { const cv = P("graph"), c = cv.getContext("2d"), W = cv.width, H = cv.height, half = H/2, G = PH.G, cols = [col("--x"), col("--y"), col("--z")];
+    c.clearRect(0,0,W,H); c.strokeStyle = col("--line"); c.lineWidth = 1.5;
+    for (const y of [half/2, half, half*1.5]){ c.beginPath(); c.moveTo(0,y); c.lineTo(W,y); c.stroke(); }
+    for (let pl = 0; pl < 2; pl++){
+      const sc = pl ? 3 : 360, y0 = pl*half + half/2;
+      for (let ax = 0; ax < 3; ax++){
+        c.strokeStyle = cols[ax]; c.lineWidth = 2.5; c.beginPath();
+        for (let i = 0; i < G.n; i++){ const v = G.buf[((G.head + i) % G.n)*6 + pl*3 + ax]; const x = i/(G.n-1)*W, y = y0 - clamp(v/sc,-1,1)*(half/2 - 6); i ? c.lineTo(x,y) : c.moveTo(x,y); }
+        c.stroke();
+      }
+    } }
+  // touch
+  { const cv = P("touch"), c = cv.getContext("2d"), W = cv.width, H = cv.height;
+    c.fillStyle = col("--panel"); c.fillRect(0,0,W,H);
+    c.fillStyle = col("--muted"); c.font = "22px system-ui"; c.textAlign = "center";
+    if (!PH.pointers.size && !PH.trails.length) c.fillText("Touch here with several fingers", W/2, H/2);
+    const hue = id => (id * 67) % 360;
+    for (const t of PH.trails){ c.fillStyle = `hsla(${hue(t.id)},80%,60%,0.35)`; c.beginPath(); c.arc(t.x, t.y, 4, 0, Math.PI*2); c.fill(); }
+    for (const [id, p] of PH.pointers){
+      const r = Math.max(28, Math.max(p.w, p.h)/2);
+      c.strokeStyle = `hsl(${hue(id)},80%,60%)`; c.lineWidth = 4; c.beginPath(); c.arc(p.x, p.y, r, 0, Math.PI*2); c.stroke();
+      c.fillStyle = col("--text"); c.font = "bold 20px system-ui"; c.fillText(String(id).slice(-2), p.x, p.y - r - 10);
+    } }
+  // microphone
+  if (PH.mic){
+    const M = PH.mic, an = M.an, cv = P("spec"), c = cv.getContext("2d"), W = cv.width, H = cv.height;
+    an.getFloatTimeDomainData(M.buf);
+    let s = 0; for (const v of M.buf) s += v*v;
+    M.db = 20*Math.log10(Math.sqrt(s / M.buf.length) || 1e-6);
+    M.peak = Math.max(M.peak, M.db);
+    if (M.db > -40) phPass("mic");
+    an.getByteFrequencyData(M.fb);
+    let mi = 0; for (let i = 2; i < M.fb.length; i++) if (M.fb[i] > M.fb[mi]) mi = i;
+    M.pitch = M.fb[mi] > 60 ? mi * phAC().sampleRate / an.fftSize : 0;
+    c.fillStyle = col("--panel"); c.fillRect(0,0,W,H);
+    const bars = 96, nb = M.fb.length;
+    for (let i = 0; i < bars; i++){
+      const lo = Math.floor(Math.pow(nb, i/bars)), hi = Math.max(lo+1, Math.floor(Math.pow(nb, (i+1)/bars)));
+      let v = 0; for (let k = lo; k < hi && k < nb; k++) v = Math.max(v, M.fb[k]);
+      M.bars[i] = v;
+      const h = v/255*H;
+      c.fillStyle = `hsl(${260 - v/255*200},80%,60%)`;
+      c.fillRect(i*W/bars, H-h, W/bars - 2, h);
+    }
+  }
+  else if (LINK.mic){
+    const M = LINK.mic, cv = P("spec"), c = cv.getContext("2d"), W = cv.width, H = cv.height;
+    c.fillStyle = col("--panel"); c.fillRect(0,0,W,H);
+    M.bars.forEach((v, i) => { const h = v/255*H; c.fillStyle = `hsl(${260 - v/255*200},80%,60%)`; c.fillRect(i*W/M.bars.length, H-h, W/M.bars.length - 2, h); });
+  }
+  // text (10 Hz)
+  if (now - PH._txt < 100) return;
+  PH._txt = now;
+  const f = (v, d=2) => v == null ? "–" : fmt(v, d);
+  ["x","y","z"].forEach((k, i) => {
+    P("a"+k).textContent = f(PH.acc[i]); P("l"+k).textContent = PH.lin ? f(PH.lin[i]) : "–"; P("g"+k).textContent = f(PH.rot[i], 1);
+  });
+  P("amag").textContent = (Math.hypot(...PH.acc)/G0).toFixed(2) + " G";
+  P("peak").textContent = PH.peak.toFixed(2) + " G";
+  P("shakes").textContent = PH.shakes;
+  P("mhz").textContent = PH.mN ? PH.mRate + " Hz" : "–";
+  P("fps").textContent = PH.fps ? Math.round(PH.fps) + " Hz" : "–";
+  P("bat").textContent = PH.battery ? Math.round(PH.battery.level*100) + "%" + (PH.battery.charging ? " ⚡" : "") : "–";
+  P("gamma").textContent = g != null ? g.toFixed(1) + "°" : "–";
+  P("beta").textContent = b != null ? b.toFixed(1) + "°" : "–";
+  P("lvl").textContent = b == null ? "–" : (Math.abs(b) < 1 && Math.abs(g) < 1 ? "Level ✓" : "Tilted");
+  P("heading").textContent = PH.heading != null ? Math.round(PH.heading) + "° " + ["N","NE","E","SE","S","SW","W","NW"][Math.round(PH.heading/45) % 8] : "–";
+  P("alpha").textContent = a != null ? a.toFixed(1) + "°" : "–";
+  P("hsrc").textContent = PH.hsrc;
+  P("tnow").textContent = PH.pointers.size; P("tmax").textContent = PH.maxTouch; P("tdev").textContent = navigator.maxTouchPoints ?? "–"; P("tpress").textContent = PH.pmax;
+  const MM = PH.mic || LINK.mic;
+  if (MM){
+    P("miclvl").style.width = clamp((MM.db + 80)/80, 0, 1)*100 + "%";
+    P("micdb").textContent = MM.db.toFixed(0) + " dB";
+    P("micpeak").textContent = MM.peak.toFixed(1) + " dBFS";
+    P("micpitch").textContent = MM.pitch ? Math.round(MM.pitch) + " Hz" : "–";
+    if (LINK.mic) P("micsr").textContent = LINK.mic.sr + " Hz (phone)";
+  }
+  if (PH.gps){
+    const q = PH.gps;
+    P("lat").textContent = q.latitude.toFixed(6); P("lon").textContent = q.longitude.toFixed(6);
+    P("acc").textContent = "± " + q.accuracy.toFixed(0) + " m";
+    P("alt").textContent = q.altitude != null ? q.altitude.toFixed(1) + " m" + (q.altitudeAccuracy ? " ± " + q.altitudeAccuracy.toFixed(0) : "") : "–";
+    P("spd").textContent = q.speed != null ? (q.speed*3.6).toFixed(1) + " km/h" : "–";
+    P("ghead").textContent = q.heading != null && !isNaN(q.heading) ? Math.round(q.heading) + "°" : "–";
+    P("gpsn").textContent = PH.gpsN; P("gpst").textContent = new Date(PH.gpsT).toLocaleTimeString();
+  }
+  const tb = P("sensors");
+  if (Object.keys(PH.sensors).length && !(LINK.role === "host" && !LINK.sensorsRx)) tb.innerHTML = PH_SENSORS.map(([n]) => { const s = PH.sensors[n]; return `<tr><td>${n.replace("Sensor","")}</td><td class="${s.status === "working" ? "ok" : ""}">${s.status}</td><td>${s.val}</td></tr>`; }).join("");
+  if (now - (PH._info || 0) > 1000){ PH._info = now; phInfo(); }
+  const cs = phChecks(), passed = cs.filter(c => c[1]).length;
+  P("score").textContent = passed + " / " + cs.length;
+  P("scorebar").style.width = passed/cs.length*100 + "%";
+  P("checks").innerHTML = cs.map(([n, ok, v]) => `<li class="${ok ? "pass" : ""}"><span class="ic"></span>${n}<span class="v">${v}</span></li>`).join("");
+}
+
+/* ----- Live link: phone → laptop over WebRTC (PeerJS signaling), paired by QR code ----- */
+const PEERJS_SRC = "https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js";
+const QR_SRC = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
+const LINK = {role:null, peer:null, conn:null, open:false, hostId:null, rx:0, _rx:0, rxRate:0, tx:0, _tx:0, txRate:0, lastRx:0, rtt:null,
+              info:null, mic:null, sensorsRx:false, name:"", camStream:null, call:null, camFacing:"environment", started:false, sentM:0, sentGps:0};
+const loadScript = src => new Promise((res, rej) => {
+  if (document.querySelector(`script[src="${src}"]`)) return res();
+  const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("Couldn't load " + src.split("/")[2] + " (offline?)"));
+  document.head.appendChild(s);
+});
+function linkSend(m){ if (LINK.conn && LINK.open){ try { LINK.conn.send(m); LINK.tx++; LINK._tx++; } catch(_){} } }
+function linkStatus(t, ok){ const el = P(LINK.role === "phone" ? "sstat" : "lstat"); if (el){ el.textContent = t; el.classList.toggle("okc", !!ok); } }
+const phDeviceName = () => navigator.userAgentData?.platform || (/iPhone|iPad/.test(navigator.userAgent) ? "iPhone" : /Android/.test(navigator.userAgent) ? (navigator.userAgent.match(/Android[^;]*;\s*([^;)]+)/)?.[1] || "Android") : "Phone");
+
+/* ===== Laptop (host) side ===== */
+function linkPageUrl(){
+  const inp = P("lurl");
+  return (inp.value || "").trim().split("#")[0];
+}
+function linkDefaultUrl(){
+  let saved = null; try { saved = localStorage.getItem("jct-phone-url"); } catch(_){}
+  if (location.protocol === "https:") return location.href.split("#")[0];
+  return saved || "";
+}
+async function linkRenderQR(){
+  const box = $("#ph-qr"), base = linkPageUrl();
+  box.innerHTML = "";
+  if (!LINK.hostId) return;
+  if (!/^https:\/\//.test(base)){
+    box.innerHTML = `<div class="qrmsg">Paste the <b>https://</b> address where this page is hosted into “Phone page URL”, then the QR code appears here.</div>`;
+    return;
+  }
+  const url = base + "#pair=" + LINK.hostId;
+  P("lurltext").textContent = url;
+  try { await loadScript(QR_SRC); new QRCode(box, {text:url, width:200, height:200, correctLevel:QRCode.CorrectLevel.M}); }
+  catch (e){ box.innerHTML = `<div class="qrmsg">${e.message}</div>`; }
+}
+async function linkHost(){
+  if (LINK.role) return;
+  LINK.role = "host";
+  $("#ph-host").hidden = false; $("#ph-local").hidden = true; $("#ph-insecure").hidden = true;
+  P("lurl").value = linkDefaultUrl();
+  linkStatus("Starting…");
+  try { await loadScript(PEERJS_SRC); } catch (e){ linkStatus(e.message); return; }
+  const id = "jct-" + Math.random().toString(36).slice(2, 8) + Math.random().toString(36).slice(2, 6);
+  const peer = LINK.peer = new Peer(id, {debug: 1});
+  peer.on("open", pid => { LINK.hostId = pid; linkStatus("Waiting for phone — scan the QR code"); linkRenderQR(); });
+  peer.on("disconnected", () => { linkStatus("Signaling lost — reconnecting…"); try { peer.reconnect(); } catch(_){} });
+  peer.on("error", e => linkStatus("Link error: " + (e.type || e.message)));
+  peer.on("connection", conn => {
+    if (LINK.conn) try { LINK.conn.close(); } catch(_){}
+    LINK.conn = conn;
+    conn.on("open", () => { LINK.open = true; linkStatus("Phone connected", true); $("#ph-host").classList.add("linked"); });
+    conn.on("data", linkRx);
+    conn.on("close", () => { if (LINK.conn === conn){ LINK.open = false; linkStatus("Phone disconnected — scan again to reconnect"); $("#ph-host").classList.remove("linked"); } });
+    conn.on("error", e => linkStatus("Connection error: " + e.message));
+  });
+  peer.on("call", call => {
+    call.answer();
+    call.on("stream", s => { const v = P("video"); v.srcObject = s; v.play().catch(() => {}); phPass("camera"); P("cammsg").textContent = "Live camera from phone"; });
+    call.on("close", () => { P("video").srcObject = null; P("cammsg").textContent = "Phone stopped sharing its camera."; });
+  });
+  setInterval(() => linkSend({t:"ping", ts:performance.now()}), 2000);
+}
+function linkRx(m){
+  LINK.rx++; LINK._rx++; LINK.lastRx = performance.now();
+  switch (m.t){
+    case "m":
+      phApplyMotion(m.acc, m.lin, m.rot);
+      if (m.o) phApplyOri(m.o[0], m.o[1], m.o[2], m.hd, m.hs);
+      break;
+    case "touch": {
+      const cv = P("touch"), W = cv.width, H = cv.height;
+      PH.pointers = new Map(m.p.map(([id, x, y, p, w, h]) => [id, {x:x*W, y:y*H, p, w:w*W, h:h*H, type:"touch"}]));
+      for (const [id, q] of PH.pointers){ PH.trails.push({x:q.x, y:q.y, id, t:performance.now()}); }
+      if (PH.trails.length > 400) PH.trails.splice(0, PH.trails.length - 400);
+      PH.maxTouch = Math.max(PH.maxTouch, PH.pointers.size);
+      if (PH.pointers.size >= 2) phPass("touch");
+      if (m.p.length) PH.pmax = m.p[0][3].toFixed(2) + " pressure · phone";
+      break; }
+    case "gps": PH.gps = m.c; PH.gpsT = m.ts; PH.gpsN++; phPass("gps"); P("gpsmsg").textContent = "From phone GPS"; break;
+    case "mic": LINK.mic = m; if (m.db > -40) phPass("mic"); break;
+    case "micoff": LINK.mic = null; break;
+    case "info": LINK.info = m.rows.map(([k, v]) => [k, v]); LINK.name = m.name; PH.battery = m.bat; P("ua").textContent = m.name + " (phone, live)"; break;
+    case "sensors": PH.sensors = m.s; LINK.sensorsRx = true; break;
+    case "ev":
+      if (m.k === "vibrate"){ if (m.ok) phPass("vibrate"); P("vibmsg").textContent = m.ok ? "Phone vibrated — feel it?" : m.why === "unsupported" ? "This phone's browser has no vibration API (iPhone)." : "Phone refused to vibrate (tap the phone screen once, check silent mode)."; }
+      if (m.k === "speaker") phPass("speaker");
+      if (m.k === "rotate"){ PH.rotations = m.n; phPass("rotate"); }
+      if (m.k === "perm") P("perm").textContent = m.msg;
+      break;
+    case "pong": LINK.rtt = performance.now() - m.ts; break;
+  }
+}
+
+/* ===== Phone (sender) side ===== */
+async function linkJoin(hostId){
+  LINK.role = "phone"; LINK.hostId = hostId;
+  $("#ph-sender").hidden = false; $("#ph-host").hidden = true; $("#ph-local").hidden = true; $("#ph-card").hidden = true;
+  linkStatus("Tap the button to connect");
+  phTouchSetup(P("spad"), cv => {
+    const W = cv.width, H = cv.height;
+    linkSend({t:"touch", p:[...PH.pointers].map(([id, q]) => [id % 1000, +(q.x/W).toFixed(4), +(q.y/H).toFixed(4), +(q.p || 0).toFixed(2), +(q.w/W).toFixed(3), +(q.h/H).toFixed(3)])});
+  });
+}
+async function linkSenderStart(){
+  if (LINK.started) return;
+  LINK.started = true;
+  try { phAC().resume(); } catch(_){}              // unlock audio during the tap
+  await phStart();
+  P("smsg").textContent = P("perm").textContent;
+  phWake().catch(() => {});
+  linkStatus("Connecting to laptop…");
+  try { await loadScript(PEERJS_SRC); } catch (e){ linkStatus(e.message); LINK.started = false; return; }
+  const peer = LINK.peer = new Peer({debug: 1});
+  peer.on("error", e => linkStatus("Link error: " + (e.type || e.message)));
+  peer.on("open", () => {
+    const conn = LINK.conn = peer.connect(LINK.hostId, {serialization:"json", reliable:true});
+    conn.on("open", () => {
+      LINK.open = true; linkStatus("Connected — move the phone!", true);
+      $("#snd-start").textContent = "Streaming";
+      linkSendInfo(); setInterval(linkSendInfo, 4000);
+      setInterval(linkSenderTick, 20);
+      setInterval(() => { if (Object.keys(PH.sensors).length) linkSend({t:"sensors", s:Object.fromEntries(Object.entries(PH.sensors).map(([k, v]) => [k, {status:v.status, val:v.val}]))}); }, 1500);
+    });
+    conn.on("data", m => {
+      if (m.t === "ping") linkSend({t:"pong", ts:m.ts});
+      if (m.t === "vib") phVibrate(m.k, m.ms);
+      if (m.t === "tone") phTone(m.mode, {freq:m.freq, vol:m.vol, wave:m.wave});
+    });
+    conn.on("close", () => { LINK.open = false; linkStatus("Disconnected from laptop — reload this page to reconnect"); });
+  });
+}
+function linkSendInfo(){
+  const rows = phInfoRows().filter(r => r[0] !== "Viewport");
+  linkSend({t:"info", name:phDeviceName(), rows, bat: PH.battery ? {level:PH.battery.level, charging:PH.battery.charging} : null});
+}
+function linkSenderTick(){
+  if (PH.mN !== LINK.sentM){
+    LINK.sentM = PH.mN;
+    const r2 = v => v == null ? null : Math.round(v*100)/100;
+    linkSend({t:"m", acc:PH.acc.map(r2), lin:PH.lin ? PH.lin.map(r2) : null, rot:PH.rot.map(r2),
+              o:[r2(PH.ori.a), r2(PH.ori.b), r2(PH.ori.g)], hd:PH.heading != null ? r2(PH.heading) : null, hs:PH.hsrc});
+  }
+  if (PH.gpsN !== LINK.sentGps && PH.gps){
+    LINK.sentGps = PH.gpsN; const q = PH.gps;
+    linkSend({t:"gps", ts:PH.gpsT, c:{latitude:q.latitude, longitude:q.longitude, accuracy:q.accuracy, altitude:q.altitude, altitudeAccuracy:q.altitudeAccuracy, speed:q.speed, heading:q.heading}});
+  }
+  if (PH.mic && (LINK._micT = (LINK._micT || 0) + 1) % 2 === 0)
+    linkSend({t:"mic", db:PH.mic.db, peak:PH.mic.peak, pitch:PH.mic.pitch, sr:phAC().sampleRate, bars:PH.mic.bars.map(v => v | 0)});
+  // sender touch pad
+  { const cv = P("spad"), c = cv.getContext("2d"), W = cv.width, H = cv.height;
+    c.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--panel"); c.fillRect(0,0,W,H);
+    for (const [id, q] of PH.pointers){ c.strokeStyle = `hsl(${(id*67)%360},80%,60%)`; c.lineWidth = 5; c.beginPath(); c.arc(q.x, q.y, Math.max(34, q.w/2), 0, Math.PI*2); c.stroke(); } }
+  // sender readouts
+  P("sacc").textContent = (Math.hypot(...PH.acc)/G0).toFixed(2) + " G";
+  P("shead").textContent = PH.heading != null ? Math.round(PH.heading) + "°" : "–";
+  P("stx").textContent = LINK.txRate + " msg/s";
+}
+async function linkShareCam(flip){
+  const btn = document.querySelector('[data-snd="cam"]');
+  if (LINK.call && !flip){ LINK.call.close(); LINK.camStream.getTracks().forEach(t => t.stop()); LINK.call = null; LINK.camStream = null; btn.classList.remove("on"); P("svideo").srcObject = null; return; }
+  if (flip){ LINK.camFacing = LINK.camFacing === "user" ? "environment" : "user"; if (!LINK.call) return; LINK.call.close(); LINK.camStream?.getTracks().forEach(t => t.stop()); }
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({video:{facingMode:LINK.camFacing, width:{ideal:1280}, height:{ideal:720}}, audio:false});
+    LINK.camStream = s; P("svideo").srcObject = s; P("svideo").play().catch(() => {});
+    LINK.call = LINK.peer.call(LINK.hostId, s);
+    btn.classList.add("on"); phPass("camera");
+  } catch (e){ P("smsg").textContent = "Camera unavailable: " + e.message; }
+}
+
+/* ===== mode selection ===== */
+function linkAutoStart(){
+  if (LINK.role || PH.localMode) return;
+  const pair = location.hash.match(/^#pair=([\w-]+)/);
+  if (pair) return linkJoin(pair[1]);
+  const phoneLike = navigator.maxTouchPoints > 0 && /Android|iPhone|iPad|Mobile/.test(navigator.userAgent);
+  if (phoneLike){ PH.localMode = true; return; }
+  linkHost();
+}
+setInterval(() => { LINK.rxRate = LINK._rx; LINK._rx = 0; LINK.txRate = LINK._tx; LINK._tx = 0;
+  if (LINK.role === "host"){
+    P("lrate").textContent = LINK.open ? LINK.rxRate + " msg/s" : "–";
+    P("llat").textContent = LINK.open && LINK.rtt != null ? Math.round(LINK.rtt/2) + " ms" : "–";
+    if (LINK.open && performance.now() - LINK.lastRx > 3000) linkStatus("Connected — no data (phone screen off?)");
+    else if (LINK.open) linkStatus("Phone connected · " + (LINK.name || "phone"), true);
+  }
+}, 1000);
+function linkWire(){
+  $("#snd-start").addEventListener("click", linkSenderStart);
+  document.querySelectorAll("[data-snd]").forEach(b => b.addEventListener("click", () => {
+    const k = b.dataset.snd;
+    if (k === "gps"){ phGps(); b.classList.toggle("on", PH.gpsWatch != null); }
+    if (k === "mic"){ phMic().then(() => { b.classList.toggle("on", !!PH.mic); if (!PH.mic) linkSend({t:"micoff"}); }); }
+    if (k === "cam") linkShareCam(false);
+    if (k === "flip") linkShareCam(true);
+  }));
+  P("lurl").addEventListener("change", () => { try { localStorage.setItem("jct-phone-url", linkPageUrl()); } catch(_){} linkRenderQR(); });
+  document.querySelector('[data-pact="copylink"]').addEventListener("click", () => navigator.clipboard?.writeText(P("lurltext").textContent));
+  document.querySelector('[data-pact="uselocal"]').addEventListener("click", () => { $("#ph-local").hidden = false; PH.localMode = true; });
+}
+linkWire();
+
+/* ----- wiring ----- */
+function phInit(){
+  if (!isSecureContext) $("#ph-insecure").hidden = false;
+  P("ua").textContent = navigator.userAgentData?.platform || (navigator.userAgent.match(/\(([^)]+)\)/)?.[1] || "").split(";").slice(0,2).join(" ·");
+  $("#ph-start").addEventListener("click", phStart);
+  phTouchSetup();
+  const view = $("#view-phone");
+  view.addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.vib) phVibrate(b.dataset.vib);
+    if (b.dataset.tone) phTone(b.dataset.tone);
+    if (b.dataset.cam) phCam(b.dataset.cam);
+    const a = b.dataset.pact;
+    if (a === "mic") phMic();
+    if (a === "gps") phGps();
+    if (a === "wake") phWake();
+    if (a === "peak"){ PH.peak = 0; PH.shakes = 0; }
+    if (a === "touchclear"){ PH.trails = []; PH.maxTouch = PH.pointers.size; }
+  });
+  view.querySelectorAll("[data-pin]").forEach(i => i.addEventListener("input", () => {
+    const n = i.dataset.pin, v = i.value;
+    if (n === "vibms") P("vibms").textContent = v + " ms";
+    if (n === "freq"){ P("freq").textContent = v + " Hz"; if (PH.tone && !PH.tone.sweep) PH.tone.o.frequency.setTargetAtTime(+v, phAC().currentTime, 0.02); }
+    if (n === "vol"){ P("vol").textContent = v + "%"; if (PH.tone) PH.tone.g.gain.setTargetAtTime((v/100)**2, phAC().currentTime, 0.02); }
+    if (n === "wave" && PH.tone) PH.tone.o.type = v;
+  }));
+  const onRot = () => { PH.rotations++; phPass("rotate"); if (LINK.role === "phone") linkSend({t:"ev", k:"rotate", n:PH.rotations}); };
+  if (screen.orientation) screen.orientation.addEventListener("change", onRot); else addEventListener("orientationchange", onRot);
+  if (navigator.getBattery) navigator.getBattery().then(bt => { PH.battery = bt; }).catch(() => {});
+}
+phInit();
+
+/* ----- view switching (Joy-Con / Phone) ----- */
+function setView(v){
+  $("#view-joy").hidden = v !== "joy";
+  $("#view-phone").hidden = v !== "phone";
+  $("#connect").hidden = v !== "joy";
+  document.querySelectorAll("[data-view]").forEach(b => b.classList.toggle("on", b.dataset.view === v));
+  PH.vis = v === "phone";
+  if (!location.hash.startsWith("#pair=") && location.hash !== "#" + v) history.replaceState(null, "", "#" + v);
+  if (PH.vis) linkAutoStart();
+}
+document.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => setView(b.dataset.view)));
+setView(location.hash === "#phone" || location.hash.startsWith("#pair=") || (location.hash !== "#joy" && !("hid" in navigator) && navigator.maxTouchPoints > 0) ? "phone" : "joy");
+(function phLoop(now){ if (PH.vis) phDraw(now); requestAnimationFrame(phLoop); })(performance.now());
+</script>
+</body>
+</html>
