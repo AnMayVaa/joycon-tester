@@ -333,6 +333,13 @@ Goal: the page runs on the **laptop**, the phone streams its sensors to it in re
 - **Output:** tick every 40 ms. Continuous level L = la + 0.6·ha (+ long decays) × gain → PWM by `navigator.vibrate(ms)` (L·40 ms, dithered below 8 ms; ≥0.9 overlaps for a solid buzz). Impact onsets add a kick pulse of 12–57 ms. iOS: kicks = tap, continuous = tap rate up to 25/s.
 - **Remote:** on the laptop host the scene buttons send `scene {id, gain}` / `scenestop` / `hgain`; the scene runs on the phone (lowest latency) and the phone replies `hout {id, L, ball:[x,y]}` every tick for the laptop's meter, graph and marble view.
 
+### iPhone specifics (tested by the user: iPhone + desktop control)
+
+- **Speaker:** iOS mutes Web Audio with the ring/silent switch and keeps it locked until a sound starts inside a tap. `phUnlockAudio()` (run on the "Connect & start sensors" tap and on any later `touchend` if the context isn't running) sets `navigator.audioSession.type = "playback"` (Safari 16.4+, bypasses silent mode) and plays a 1-sample buffer. Tone gain is linear (`vol/100 × 0.9`, default 70 %). The phone reports `ev speaker {state}` so the laptop can show whether audio is running.
+- **Vibration:** iPhone has no Vibration API. The only web haptic is the iOS 18 `<input switch>` tap (`iosTick`), and Safari only honours it inside a user gesture, so **remote/automatic vibration from the laptop is impossible on iPhone**. `phVibrate` checks `navigator.userActivation.isActive` and reports `why: "ios-remote"`; the phone link screen has a **Tap haptic test** button (gesture → tick) to verify the motor.
+- **Haptic scenes on iPhone** are rendered as sound instead (`phSynthStart/Hit/Stop`): low band as a triangle oscillator one octave up (phone speakers can't play 40–160 Hz), high band as a sine, impacts as short enveloped bursts. The phone's `info` message carries `ios:true` so the laptop explains this.
+- **Rotation:** iPhones usually have rotation lock on, so the screen never rotates. `phRotDetect(β, γ)` detects physical portrait (|β| > 55°, |γ| < 30°) ↔ landscape (|γ| > 60°, |β| < 30°) turns from gravity; the checklist item is "Turn phone portrait ↔ landscape".
+
 ## 15. References
 - dekuNukem, *Nintendo_Switch_Reverse_Engineering* (HID reports, subcommands, SPI map, rumble, IMU).
 - CTCaer, *jc_toolkit* (`jctool.cpp`: IR camera, MCU CRC, Home LED patterns).

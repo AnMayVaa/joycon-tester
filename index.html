@@ -238,7 +238,7 @@ table.ptable td.ok{color:var(--good)}
       <h2>Phone → laptop live link</h2>
       <div class="row" style="margin-top:0"><span class="pill">Status <b data-p="sstat">–</b></span></div>
       <button class="primary bigbtn" id="snd-start">Connect &amp; start sensors</button>
-      <div class="row"><button data-snd="gps">GPS</button><button data-snd="mic">Microphone</button><button data-snd="cam">Share camera</button><button data-snd="flip">Switch camera</button></div>
+      <div class="row"><button data-snd="gps">GPS</button><button data-snd="mic">Microphone</button><button data-snd="cam">Share camera</button><button data-snd="flip">Switch camera</button><button data-snd="tap">Tap haptic test</button></div>
       <canvas class="ptouch" data-p="spad" width="600" height="520" style="margin-top:10px"></canvas>
       <div class="muted" style="font-size:12px;text-align:center;margin-top:4px">Touch here with several fingers — it shows on the laptop.</div>
       <div class="row" style="font-size:12px"><span class="pill">|a| <b data-p="sacc">–</b></span><span class="pill">Heading <b data-p="shead">–</b></span><span class="pill">Sending <b data-p="stx">–</b></span></div>
@@ -309,6 +309,7 @@ table.ptable td.ok{color:var(--good)}
         </section>
         <section class="panel wide">
           <h3>Haptic scenes (phone vibration) <span class="r muted" style="font-size:12px;text-transform:none" data-p="hapnote"></span></h3>
+          <div class="msg" data-p="hapios" style="margin:-4px 0 10px"></div>
           <div class="scenes" data-p="pscenes"></div>
           <div class="hrow">
             <canvas class="hviz" data-p="hviz" width="900" height="240"></canvas>
@@ -324,13 +325,14 @@ table.ptable td.ok{color:var(--good)}
         <section class="panel">
           <h3>Speaker</h3>
           <label class="sl"><span>Frequency</span><input type="range" data-pin="freq" min="40" max="16000" value="440"><span data-p="freq">440 Hz</span></label>
-          <label class="sl"><span>Volume</span><input type="range" data-pin="vol" min="0" max="100" value="30"><span data-p="vol">30%</span></label>
+          <label class="sl"><span>Volume</span><input type="range" data-pin="vol" min="0" max="100" value="70"><span data-p="vol">70%</span></label>
           <div class="row" style="font-size:12px">Wave
             <select data-pin="wave"><option>sine</option><option>square</option><option>sawtooth</option><option>triangle</option></select></div>
           <div class="row">
             <button class="small" data-tone="0">Play both</button><button class="small" data-tone="-1">Left only</button><button class="small" data-tone="1">Right only</button>
             <button class="small" data-tone="sweep">Sweep 40 Hz→16 kHz</button><button class="small" data-tone="stop">Stop</button>
           </div>
+          <div class="msg" data-p="tonemsg"></div>
           <div class="muted" style="font-size:12px;margin-top:6px">Left/right tests stereo speakers or earphones. The sweep shows where your speaker stops producing sound.</div>
         </section>
         <section class="panel">
@@ -1603,7 +1605,7 @@ const PH = {
   mN:0, _mN:0, mRate:0, _mt:performance.now(), G:{n:400, buf:new Float32Array(2400), head:0},
   peak:0, shakes:0, shakeArm:true, tests:{}, pointers:new Map(), trails:[], maxTouch:0, pmax:"–",
   gpsWatch:null, gps:null, gpsT:0, gpsN:0, mic:null, cam:null, audio:null, tone:null, wake:null,
-  sensors:{}, fps:0, _f:0, _ft:performance.now(), rotations:0, battery:null, _txt:0, vis:false
+  sensors:{}, phys:null, physTurns:0, fps:0, _f:0, _ft:performance.now(), rotations:0, battery:null, _txt:0, vis:false
 };
 const PEL = {};
 const P = k => PEL[k] || (PEL[k] = document.querySelector(`[data-p="${k}"]`));
@@ -1631,13 +1633,22 @@ function phApplyMotion(acc, lin, rot){
   G.buf.set([PH.rot[0], PH.rot[1], PH.rot[2], PH.acc[0]/G0, PH.acc[1]/G0, PH.acc[2]/G0], p);
   G.head = (G.head + 1) % G.n;
 }
+// Physical portrait/landscape from gravity — works even with the iPhone's rotation lock on.
+function phRotDetect(b, g){
+  if (b == null || g == null) return;
+  const land = Math.abs(g) > 60 && Math.abs(b) < 30, port = Math.abs(b) > 55 && Math.abs(g) < 30;
+  const st = land ? "landscape" : port ? "portrait" : null;
+  if (st && st !== PH.phys){ if (PH.phys){ PH.physTurns++; phPass("rotate"); } PH.phys = st; }
+}
 function phApplyOri(a, b, g, heading, hsrc){
   if (a == null && b == null) return;
+  phRotDetect(b, g);
   PH.ori = {a, b, g}; phPass("orient");
   if (heading != null){ PH.heading = heading; PH.hsrc = hsrc || "phone"; phPass("compass"); }
 }
 function phOri(e){
   if (e.alpha == null && e.beta == null) return;
+  phRotDetect(e.beta, e.gamma);
   PH.ori = {a:e.alpha, b:e.beta, g:e.gamma}; phPass("orient");
   if (e.webkitCompassHeading != null){ PH.heading = e.webkitCompassHeading; PH.hsrc = "iOS compass"; phPass("compass"); }
   else if (e.absolute && e.alpha != null){ PH.heading = (360 - e.alpha) % 360; PH.hsrc = "absolute orientation"; phPass("compass"); }
@@ -1727,8 +1738,9 @@ function phVibrate(kind, ms){
   if (!CAN_VIB){
     if (IS_IOS){
       if (kind !== "stop"){ let t = 0; pat.forEach((d, i) => { if (i % 2 === 0) for (let k = 0; k < d; k += 60) setTimeout(iosTick, t + k); t += d; }); }
-      msg.textContent = "iPhone: playing as haptic taps (iOS 18+ only — iPhone browsers can't drive the motor directly).";
-      if (kind !== "stop"){ phPass("vibrate"); if (LINK.role === "phone") linkSend({t:"ev", k:"vibrate", ok:true, why:"ios"}); }
+      const tapped = navigator.userActivation ? navigator.userActivation.isActive : true;
+      msg.textContent = tapped ? "iPhone: played as haptic taps (iOS 18+)." : "iPhone blocks haptics that aren't triggered by a tap on the phone itself.";
+      if (kind !== "stop"){ if (tapped) phPass("vibrate"); if (LINK.role === "phone") linkSend({t:"ev", k:"vibrate", ok:tapped, why: tapped ? "ios" : "ios-remote"}); }
       return;
     }
     msg.textContent = "This browser has no Vibration API (Firefox removed it). Use Chrome or Samsung Internet on Android.";
@@ -1743,6 +1755,14 @@ function phVibrate(kind, ms){
 
 /* ----- speaker ----- */
 const phAC = () => PH.audio || (PH.audio = new (window.AudioContext || window.webkitAudioContext)());
+// iOS: Web Audio is muted by the ring/silent switch and stays locked until a sound starts inside a tap.
+function phUnlockAudio(){
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch(_){}   // Safari 16.4+: play even in silent mode
+  try {
+    const ac = phAC(); ac.resume();
+    const src = ac.createBufferSource(); src.buffer = ac.createBuffer(1, 1, 22050); src.connect(ac.destination); src.start(0);
+  } catch(_){}
+}
 function phToneStop(){ if (PH.tone){ try { PH.tone.o.stop(); } catch(_){} PH.tone = null; } }
 function phTone(mode, opts){
   const val = n => opts ? opts[n] : document.querySelector(`[data-pin="${n}"]`).value;
@@ -1751,7 +1771,7 @@ function phTone(mode, opts){
   if (mode === "stop") return;
   const ac = phAC(); ac.resume();
   const o = ac.createOscillator(), g = ac.createGain();
-  o.type = val("wave"); o.frequency.value = +val("freq"); g.gain.value = (+val("vol") / 100) ** 2;
+  o.type = val("wave"); o.frequency.value = +val("freq"); g.gain.value = +val("vol") / 100 * 0.9;
   o.connect(g);
   if (ac.createStereoPanner && mode !== "sweep"){ const p = ac.createStereoPanner(); p.pan.value = +mode; g.connect(p).connect(ac.destination); }
   else g.connect(ac.destination);
@@ -1764,7 +1784,7 @@ function phTone(mode, opts){
   PH.tone = {o, g, sweep: mode === "sweep"};
   o.onended = () => { if (PH.tone?.o === o) PH.tone = null; };
   phPass("speaker");
-  if (LINK.role === "phone") linkSend({t:"ev", k:"speaker"});
+  if (LINK.role === "phone") setTimeout(() => linkSend({t:"ev", k:"speaker", state: phAC().state}), 150);
 }
 
 /* ----- microphone ----- */
@@ -1836,7 +1856,7 @@ function phInfoRows(){
     ["Pixel ratio", devicePixelRatio + "×  (" + Math.round(screen.width*devicePixelRatio) + " × " + Math.round(screen.height*devicePixelRatio) + " physical)"],
     ["Refresh rate", PH.fps ? "≈ " + Math.round(PH.fps) + " Hz" : "measuring…"],
     ["Orientation", o ? `${o.type} (${o.angle}°)` : (window.orientation ?? "–") + "°"],
-    ["Rotations seen", PH.rotations],
+    ["Rotations seen", PH.rotations + " (screen) · " + PH.physTurns + " (physical, now " + (PH.phys || "?") + ")"],
     ["Colour gamut", mm("(color-gamut: rec2020)") ? "Rec.2020" : mm("(color-gamut: p3)") ? "Display P3" : "sRGB"],
     ["HDR", mm("(dynamic-range: high)") ? "yes" : "no"],
     ["Dark mode", mm("(prefers-color-scheme: dark)") ? "on" : "off"],
@@ -1865,7 +1885,7 @@ function phChecks(){
     ["Microphone hears sound", T.mic, (PH.mic || LINK.mic) ? (PH.mic || LINK.mic).peak.toFixed(0) + " dB peak" : ""],
     ["Camera opens", T.camera, ""],
     ["GPS fix", T.gps, PH.gpsN + " fixes"],
-    ["Screen rotation", T.rotate, PH.rotations + "×"],
+    ["Turn phone portrait ↔ landscape", T.rotate, (PH.phys || "–") + " · " + PH.physTurns + " turns"],
     ["Haptic scene played", T.haptic, ""]
   ];
 }
@@ -2085,11 +2105,11 @@ function linkRx(m){
     case "gps": PH.gps = m.c; PH.gpsT = m.ts; PH.gpsN++; phPass("gps"); P("gpsmsg").textContent = "From phone GPS"; break;
     case "mic": LINK.mic = m; if (m.db > -40) phPass("mic"); break;
     case "micoff": LINK.mic = null; break;
-    case "info": LINK.info = m.rows.map(([k, v]) => [k, v]); LINK.name = m.name; PH.battery = m.bat; P("ua").textContent = m.name + " (phone, live)"; break;
+    case "info": if (m.ios) P("hapios").textContent = "iPhone connected: Apple doesn't allow websites to vibrate an iPhone, so scenes play as SOUND through the phone speaker (turn the volume up). Android phones use the real vibration motor."; LINK.info = m.rows.map(([k, v]) => [k, v]); LINK.name = m.name; PH.battery = m.bat; P("ua").textContent = m.name + " (phone, live)"; break;
     case "sensors": PH.sensors = m.s; LINK.sensorsRx = true; break;
     case "ev":
-      if (m.k === "vibrate"){ if (m.ok) phPass("vibrate"); P("vibmsg").textContent = m.why === "ios" ? "iPhone played it as haptic taps (iOS 18+)." : m.ok ? "Phone vibrated — feel it? (nothing? check the phone's vibration/haptics setting)" : m.why === "unsupported" ? "This phone's browser has no vibration API (iPhone)." : "Phone refused to vibrate (tap the phone screen once, check silent mode)."; }
-      if (m.k === "speaker") phPass("speaker");
+      if (m.k === "vibrate"){ if (m.ok) phPass("vibrate"); P("vibmsg").textContent = m.why === "ios-remote" ? "iPhone: Apple doesn't let websites vibrate on a remote command — only at the moment you tap the phone. Press “Tap haptic test” on the phone to check the motor; haptic scenes play as sound on iPhone." : m.why === "tap" ? "Phone haptic tap test pressed — did you feel a click?" : m.why === "ios" ? "iPhone played it as haptic taps (iOS 18+)." : m.ok ? "Phone vibrated — feel it? (nothing? check the phone's vibration/haptics setting)" : m.why === "unsupported" ? "This phone's browser has no vibration API (iPhone)." : "Phone refused to vibrate (tap the phone screen once, check silent mode)."; }
+      if (m.k === "speaker"){ phPass("speaker"); P("tonemsg").textContent = m.state === "running" ? "Playing on the phone — volume buttons on the phone also apply." : "Phone audio is " + m.state + ": tap anywhere on the phone screen once, then press Play again."; }
       if (m.k === "rotate"){ PH.rotations = m.n; phPass("rotate"); }
       if (m.k === "perm") P("perm").textContent = m.msg;
       break;
@@ -2111,7 +2131,7 @@ async function linkJoin(hostId){
 async function linkSenderStart(){
   if (LINK.started) return;
   LINK.started = true;
-  try { phAC().resume(); } catch(_){}              // unlock audio during the tap
+  phUnlockAudio();                                  // unlock audio during the tap
   await phStart();
   P("smsg").textContent = P("perm").textContent;
   phWake().catch(() => {});
@@ -2141,7 +2161,7 @@ async function linkSenderStart(){
 }
 function linkSendInfo(){
   const rows = phInfoRows().filter(r => r[0] !== "Viewport");
-  linkSend({t:"info", name:phDeviceName(), rows, bat: PH.battery ? {level:PH.battery.level, charging:PH.battery.charging} : null});
+  linkSend({t:"info", ios:IS_IOS && !CAN_VIB, name:phDeviceName(), rows, bat: PH.battery ? {level:PH.battery.level, charging:PH.battery.charging} : null});
 }
 function linkSenderTick(){
   if (PH.mN !== LINK.sentM){
@@ -2196,6 +2216,8 @@ setInterval(() => { LINK.rxRate = LINK._rx; LINK._rx = 0; LINK.txRate = LINK._tx
   }
 }, 1000);
 function linkWire(){
+  // iOS suspends audio after interruptions/screen lock; any tap on the phone re-unlocks it.
+  document.addEventListener("touchend", () => { if (PH.audio && PH.audio.state !== "running") phUnlockAudio(); }, {passive:true});
   $("#snd-start").addEventListener("click", linkSenderStart);
   document.querySelectorAll("[data-snd]").forEach(b => b.addEventListener("click", () => {
     const k = b.dataset.snd;
@@ -2203,6 +2225,7 @@ function linkWire(){
     if (k === "mic"){ phMic().then(() => { b.classList.toggle("on", !!PH.mic); if (!PH.mic) linkSend({t:"micoff"}); }); }
     if (k === "cam") linkShareCam(false);
     if (k === "flip") linkShareCam(true);
+    if (k === "tap"){ if (CAN_VIB) navigator.vibrate(60); else iosTick(); phPass("vibrate"); linkSend({t:"ev", k:"vibrate", ok:true, why:"tap"}); P("smsg").textContent = CAN_VIB ? "Vibrated." : "You should feel a light click (needs iOS 18 or newer). Nothing? Settings → Sounds & Haptics → System Haptics must be on."; }
   }));
   P("lurl").addEventListener("change", () => { try { localStorage.setItem("jct-phone-url", linkPageUrl()); } catch(_){} linkRenderQR(); });
   document.querySelector('[data-pact="copylink"]').addEventListener("click", () => navigator.clipboard?.writeText(P("lurltext").textContent));
@@ -2249,9 +2272,10 @@ function phSceneStart(id){
   const tok = ++PHH.tok, s = {}; sc.init?.(s);
   Object.assign(PHH, {sc, s, imps:[], sched:[], iosAcc:0});
   phPass("haptic");
+  if (!CAN_VIB) phSynthStart();
   const t0 = performance.now(), W = 40; let last = t0;
   const c = {
-    hit: (band, f, a, ms, flat=false) => PHH.imps.push({band, a, ms, flat, t:performance.now(), done:false}),
+    hit: (band, f, a, ms, flat=false) => PHH.imps.push({band, f, a, ms, flat, t:performance.now(), done:false}),
     at: (d, fn) => PHH.sched.push({t:performance.now() + d*1000, fn})
   };
   (function tick(){
@@ -2266,6 +2290,7 @@ function phSceneStart(id){
     for (let i = PHH.imps.length - 1; i >= 0; i--){
       const m = PHH.imps[i], age = now - m.t, w = m.band === "l" ? 1 : 0.7;
       if (m.done && age > m.ms){ PHH.imps.splice(i, 1); continue; }
+      if (!m.done && PHH.syn) phSynthHit(m);                   // iPhone: impact as a sound burst
       if (m.flat) L += m.a*w;                                   // sustained buzz
       else {
         if (!m.done) kick = Math.max(kick, (12 + m.a*45)*w);    // sharp onset pulse
@@ -2279,9 +2304,12 @@ function phSceneStart(id){
     if (CAN_VIB){
       if (on > 0){ navigator.vibrate(Math.round(Math.min(on, 200))); PHH.vibOn = true; }
       else if (PHH.vibOn){ navigator.vibrate(0); PHH.vibOn = false; }
-    } else if (IS_IOS){
-      if (kick > 0) iosTick();
-      else { PHH.iosAcc += L*25*c.dt; if (PHH.iosAcc >= 1){ PHH.iosAcc -= 1; iosTick(); } }
+    } else if (PHH.syn){
+      const ac = phAC(), t = ac.currentTime, gn = PHH.gain;
+      PHH.syn.oL.frequency.setTargetAtTime(clamp((b.lf || 80)*2, 60, 600), t, 0.02);
+      PHH.syn.oH.frequency.setTargetAtTime(clamp(b.hf || 320, 120, 2000), t, 0.02);
+      PHH.syn.gL.gain.setTargetAtTime(clamp((b.la || 0)*gn, 0, 1)*0.7, t, 0.03);
+      PHH.syn.gH.gain.setTargetAtTime(clamp((b.ha || 0)*gn, 0, 1)*0.35, t, 0.03);
     }
     PHH.L = Math.max(L, Math.min(1, kick/50));
     phHapHist(PHH.L);
@@ -2289,8 +2317,35 @@ function phSceneStart(id){
     setTimeout(tick, W);
   })();
 }
+// iPhone has no web vibration, so scenes are rendered as sound: low band (an octave up so phone speakers can play it) + high band + impact bursts.
+function phSynthStart(){
+  phSynthStop();
+  try {
+    const ac = phAC(); ac.resume();
+    const mk = type => { const o = ac.createOscillator(), g = ac.createGain(); o.type = type; g.gain.value = 0; o.connect(g).connect(ac.destination); o.start(); return [o, g]; };
+    const [oL, gL] = mk("triangle"), [oH, gH] = mk("sine");
+    PHH.syn = {oL, gL, oH, gH};
+  } catch(_){ PHH.syn = null; }
+}
+function phSynthHit(m){
+  try {
+    const ac = phAC(), t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    const f = m.band === "l" ? clamp((m.f || 100)*2, 60, 600) : clamp(m.f || 600, 120, 2000);
+    o.type = m.band === "l" ? "triangle" : "sine"; o.frequency.value = f;
+    const peak = clamp(m.a*PHH.gain, 0, 1)*(m.band === "l" ? 0.8 : 0.45), dur = Math.max(0.03, m.ms/1000);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.001), t + 0.004);
+    if (m.flat){ g.gain.setValueAtTime(Math.max(peak, 0.001), t + dur); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.02); }
+    else g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.05);
+  } catch(_){}
+}
+function phSynthStop(){
+  if (!PHH.syn) return;
+  try { const t = phAC().currentTime; for (const k of ["gL","gH"]) PHH.syn[k].gain.setTargetAtTime(0, t, 0.02); const s = PHH.syn; setTimeout(() => { try { s.oL.stop(); s.oH.stop(); } catch(_){} }, 200); } catch(_){}
+  PHH.syn = null;
+}
 function phSceneStop(quiet){
-  PHH.tok++; PHH.sc = null; PHH.L = 0;
+  PHH.tok++; PHH.sc = null; PHH.L = 0; phSynthStop();
   if (CAN_VIB) navigator.vibrate(0);
   if (!quiet && LINK.role === "phone") linkSend({t:"hout", id:null, L:0});
 }
@@ -2344,11 +2399,11 @@ function phInit(){
     if (n === "vibms") P("vibms").textContent = v + " ms";
     if (n === "hgain"){ P("hgain").textContent = v + "%"; PHH.gain = v/100; if (LINK.role === "host") linkSend({t:"hgain", gain:PHH.gain}); }
     if (n === "freq"){ P("freq").textContent = v + " Hz"; if (PH.tone && !PH.tone.sweep) PH.tone.o.frequency.setTargetAtTime(+v, phAC().currentTime, 0.02); }
-    if (n === "vol"){ P("vol").textContent = v + "%"; if (PH.tone) PH.tone.g.gain.setTargetAtTime((v/100)**2, phAC().currentTime, 0.02); }
+    if (n === "vol"){ P("vol").textContent = v + "%"; if (PH.tone) PH.tone.g.gain.setTargetAtTime(v/100*0.9, phAC().currentTime, 0.02); }
     if (n === "wave" && PH.tone) PH.tone.o.type = v;
   }));
   P("pscenes").innerHTML = SCENES.map(x => `<button class="scene-btn" data-pscene="${x.id}"><span class="sn">${x.name}</span><span class="tag">${PSTAG[x.id] || x.tag}</span><small>${x.desc}</small></button>`).join("");
-  P("vibmode").textContent = CAN_VIB ? "Vibration API ✓" : IS_IOS ? "iPhone: haptic taps (iOS 18+)" : "no Vibration API";
+  P("vibmode").textContent = CAN_VIB ? "Vibration API ✓" : IS_IOS ? "iPhone: only taps on the phone itself" : "no Vibration API";
   P("hapnote").textContent = CAN_VIB || IS_IOS ? "" : "";
   const onRot = () => { PH.rotations++; phPass("rotate"); if (LINK.role === "phone") linkSend({t:"ev", k:"rotate", n:PH.rotations}); };
   if (screen.orientation) screen.orientation.addEventListener("change", onRot); else addEventListener("orientationchange", onRot);
